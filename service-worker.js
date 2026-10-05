@@ -2,10 +2,12 @@ const CACHE_NAME = "fx-signal-v1";
 const APP_SHELL = [
   "./",
   "./index.html",
+  "./install.html",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
-  "./apple-touch-icon.png"
+  "./apple-touch-icon.png",
+  "./fxsignal-install-qr.png"
 ];
 
 self.addEventListener("install", event => {
