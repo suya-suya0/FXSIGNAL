@@ -767,6 +767,105 @@ body.force-desktop{
 .scheduler-ok{color:#9fe0bd}
 .scheduler-warn{color:#f2cf79}
 
+
+.notification-toast{
+  position:fixed;
+  left:50%;
+  right:auto;
+  top:max(12px,env(safe-area-inset-top));
+  transform:translateX(-50%);
+  z-index:250;
+  width:min(560px,calc(100vw - 24px));
+  background:#111a2a;
+  border:1px solid #5879aa;
+  border-radius:18px;
+  padding:14px 16px;
+  box-shadow:0 18px 60px rgba(0,0,0,.55);
+}
+.notification-toast.hidden{display:none}
+.notification-toast-head{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+}
+.notification-toast-badge{
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.06em;
+  color:#9fc8ff;
+}
+.notification-toast-close{
+  flex:0 0 auto;
+  border:1px solid #354a69;
+  background:#17233a;
+  color:#dce8f8;
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  cursor:pointer;
+}
+.notification-toast strong{
+  display:block;
+  font-size:16px;
+  line-height:1.45;
+  margin-top:3px;
+}
+.notification-toast p{
+  margin:7px 0 0;
+  color:#c3cfde;
+  font-size:12px;
+  line-height:1.55;
+}
+.notification-toast .notification-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:9px;
+}
+.notification-toast .notification-chip{
+  font-size:11px;
+  border:1px solid #344b6e;
+  background:#0c1626;
+  border-radius:999px;
+  padding:4px 8px;
+  color:#d6e3f4;
+}
+.notification-setup{
+  border:1px solid #31496d;
+  background:#0e192a;
+  border-radius:16px;
+  padding:14px;
+  margin-top:10px;
+}
+.notification-setup-title{
+  font-weight:900;
+  margin-bottom:4px;
+}
+.notification-setup-status{
+  color:#aebdd1;
+  font-size:12px;
+  line-height:1.6;
+  margin-top:8px;
+}
+.notification-setup-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:12px;
+}
+.notification-setup-actions button{
+  min-height:42px;
+}
+@media(max-width:600px){
+  .notification-toast{
+    width:calc(100vw - 16px);
+    top:max(8px,env(safe-area-inset-top));
+    border-radius:16px;
+  }
+  .notification-toast strong{font-size:15px}
+}
+
 </style>
 
 <link rel="manifest" href="./manifest.json">
@@ -1005,6 +1104,19 @@ body.force-desktop{
           </div>
           <input id="notifySpeech" type="checkbox">
         </label>
+      </div>
+
+      <div class="notify-group">
+        <div class="notify-label">初回セットアップ</div>
+        <div class="notification-setup">
+          <div class="notification-setup-title">通知を使える状態にする</div>
+          <div class="sub">最初に一度だけ、通知許可と音の確認をしてください。</div>
+          <div class="notification-setup-actions">
+            <button id="requestNotificationPermissionBtn" class="mini primary" type="button">通知を許可する</button>
+            <button id="testRealNotificationBtn" class="mini" type="button">本番通知をテスト</button>
+          </div>
+          <div id="notificationSetupStatus" class="notification-setup-status">状態を確認中...</div>
+        </div>
       </div>
 
       <div class="notify-group">
@@ -2439,6 +2551,7 @@ function saveNotifyPrefs(){
   };
   localStorage.setItem(NOTIFY_PREFS_KEY,JSON.stringify(prefs));
   updateNotificationSchedulerStatus();
+  updateNotificationSetupStatus();
 }
 
 function applyNotifyPrefs(){
@@ -2499,15 +2612,27 @@ function showNotificationToast(e,minutes){
   const box=document.getElementById("notificationToast");
   if(!box) return;
 
+  const eventDate=toUtcDate(e);
+  const p=jstParts(eventDate);
   const when=minutes===0 ? "まもなく発表" : `${minutes}分前`;
+
+  document.getElementById("notificationToastBadge").textContent=
+    `FX SIGNAL ・ ${when}`;
   document.getElementById("notificationToastTitle").textContent=
-    `${eventCategoryLabel(e)}：${when}`;
+    eventDisplayName(e);
   document.getElementById("notificationToastText").textContent=
-    `${eventDisplayName(e)}　${importanceStars(e)}`;
+    `${eventCategoryLabel(e)}の時間が近づいています。`;
+
+  const meta=document.getElementById("notificationToastMeta");
+  meta.innerHTML=[
+    `発表 ${p.time}`,
+    importanceStars(e),
+    countryNameJa(e.country)
+  ].filter(Boolean).map(x=>`<span class="notification-chip">${escapeHtml(x)}</span>`).join("");
 
   box.classList.remove("hidden");
   clearTimeout(showNotificationToast._timer);
-  showNotificationToast._timer=setTimeout(()=>box.classList.add("hidden"),9000);
+  showNotificationToast._timer=setTimeout(()=>box.classList.add("hidden"),12000);
 }
 
 async function fireEventNotification(e,minutes){
@@ -2620,8 +2745,108 @@ function updateNotificationSchedulerStatus(){
     `通知スケジューラー稼働中：次回 ${p.date} ${p.time}（${next.minutes===0?"発表直前":next.minutes+"分前"}）`;
 }
 
+
+function notificationPermissionLabel(){
+  if(!("Notification" in window)) return "この端末ではブラウザ通知に対応していません。画面内通知と音は利用できます。";
+  if(Notification.permission==="granted") return "通知：許可済み";
+  if(Notification.permission==="denied") return "通知：ブロックされています。端末またはブラウザの設定から許可してください。";
+  return "通知：まだ許可されていません";
+}
+
+function updateNotificationSetupStatus(){
+  const el=document.getElementById("notificationSetupStatus");
+  const btn=document.getElementById("requestNotificationPermissionBtn");
+  if(!el) return;
+
+  const permissionText=notificationPermissionLabel();
+  const audioText=notificationsArmed
+    ? "音：準備済み"
+    : "音：この画面を一度タップすると準備されます";
+
+  el.textContent=`${permissionText} ／ ${audioText}`;
+
+  if(btn){
+    if(!("Notification" in window)){
+      btn.disabled=true;
+      btn.textContent="ブラウザ通知非対応";
+    }else if(Notification.permission==="granted"){
+      btn.disabled=true;
+      btn.textContent="通知は許可済み";
+    }else if(Notification.permission==="denied"){
+      btn.disabled=true;
+      btn.textContent="通知がブロック中";
+    }else{
+      btn.disabled=false;
+      btn.textContent="通知を許可する";
+    }
+  }
+}
+
+async function requestNotificationPermission(){
+  armNotifications();
+
+  if(!("Notification" in window)){
+    updateNotificationSetupStatus();
+    return;
+  }
+
+  try{
+    await Notification.requestPermission();
+  }catch{}
+  updateNotificationSetupStatus();
+}
+
+function demoNotificationEvent(){
+  const now=new Date(Date.now()+5*60*1000);
+  const yyyy=now.getUTCFullYear();
+  const mm=String(now.getUTCMonth()+1).padStart(2,"0");
+  const dd=String(now.getUTCDate()).padStart(2,"0");
+  const hh=String(now.getUTCHours()).padStart(2,"0");
+  const mi=String(now.getUTCMinutes()).padStart(2,"0");
+
+  return {
+    id:"notification-test",
+    date:`${yyyy}-${mm}-${dd}`,
+    time:`${hh}:${mi}:00`,
+    country:"US",
+    title:"ISM Services PMI",
+    type:"indicator",
+    importance:3,
+    actual:null,
+    forecast:"--",
+    previous:"--",
+    source_id:"notification-test"
+  };
+}
+
+async function testRealNotification(){
+  armNotifications();
+  const e=demoNotificationEvent();
+
+  await playNotificationSound();
+  showNotificationToast(e,5);
+
+  if("Notification" in window && Notification.permission==="granted"){
+    try{
+      new Notification("FX SIGNAL テスト",{
+        body:`5分前：${eventDisplayName(e)} ${importanceStars(e)}`,
+        tag:"fxsignal-notification-test"
+      });
+    }catch{}
+  }
+
+  updateNotificationSetupStatus();
+}
+
 function initNotificationControls(){
   applyNotifyPrefs();
+
+  document.getElementById("requestNotificationPermissionBtn")?.addEventListener("click",requestNotificationPermission);
+  document.getElementById("testRealNotificationBtn")?.addEventListener("click",testRealNotification);
+  document.getElementById("notificationToastClose")?.addEventListener("click",()=>{
+    document.getElementById("notificationToast")?.classList.add("hidden");
+  });
+
 
   [
     "notifyMaster",
@@ -2639,6 +2864,7 @@ function initNotificationControls(){
   });
 
   updateNotificationSchedulerStatus();
+  updateNotificationSetupStatus();
 }
 
 // Audio autoplay restrictions mean the page must have received at least one
@@ -2854,10 +3080,16 @@ updatePwaInstallUi();
 
 
 <div id="notificationToast" class="notification-toast hidden" role="status" aria-live="polite">
-  <strong id="notificationToastTitle">FX SIGNAL</strong>
+  <div class="notification-toast-head">
+    <div>
+      <div id="notificationToastBadge" class="notification-toast-badge">FX SIGNAL</div>
+      <strong id="notificationToastTitle">通知</strong>
+    </div>
+    <button id="notificationToastClose" class="notification-toast-close" type="button" aria-label="通知を閉じる">×</button>
+  </div>
   <p id="notificationToastText"></p>
+  <div id="notificationToastMeta" class="notification-meta"></div>
 </div>
-
 <div id="dayPopupBackdrop" class="day-popup-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="dayPopupTitle">
   <div class="day-popup">
     <div class="day-popup-head">
