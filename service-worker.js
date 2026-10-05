@@ -1,5 +1,6 @@
-const CACHE_NAME = "fx-signal-v3";
-const APP_SHELL = [
+const CACHE_NAME = "fx-signal-v4";
+
+const STATIC_ASSETS = [
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
@@ -10,15 +11,27 @@ const APP_SHELL = [
 
 self.addEventListener("install", event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL))
+    caches.open(CACHE_NAME).then(cache =>
+      Promise.all(
+        STATIC_ASSETS.map(url =>
+          cache.add(url).catch(() => null)
+        )
+      )
+    )
   );
-  // Do not force activation here. Let the app show "更新があります".
+
+  // Intentionally do NOT call skipWaiting() here.
+  // The app's "更新する" button tells the new worker when to activate.
 });
 
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      Promise.all(
+        keys
+          .filter(key => key !== CACHE_NAME)
+          .map(key => caches.delete(key))
+      )
     )
   );
   self.clients.claim();
@@ -36,7 +49,7 @@ self.addEventListener("fetch", event => {
 
   const url = new URL(req.url);
 
-  // API/live data: always prefer network.
+  // Live/API data should never be trapped behind stale cache.
   if (
     req.url.includes("supabase.co") ||
     req.url.includes("xoomar.com") ||
@@ -49,9 +62,8 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // IMPORTANT:
-  // Navigation / HTML must be network-first so an installed PWA receives
-  // the newest index.html instead of getting trapped on an old cached page.
+  // HTML/navigation: network first.
+  // This is essential for installed PWAs to receive the newest app code.
   if (
     req.mode === "navigate" ||
     url.pathname.endsWith("/index.html") ||
@@ -60,28 +72,32 @@ self.addEventListener("fetch", event => {
   ) {
     event.respondWith(
       fetch(req, { cache: "no-store" })
-        .then(res => {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
-          return res;
+        .then(response => {
+          if (response && response.ok) {
+            const copy=response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
+          }
+          return response;
         })
-        .catch(() =>
-          caches.match(req).then(cached => cached || caches.match("./index.html"))
-        )
+        .catch(async() => {
+          const cached=await caches.match(req);
+          if(cached) return cached;
+          return caches.match("./index.html");
+        })
     );
     return;
   }
 
-  // Static app assets: cache-first with background refresh.
+  // Static assets: stale-while-revalidate.
   event.respondWith(
     caches.match(req).then(cached => {
-      const network = fetch(req)
-        .then(res => {
-          if (res && res.ok) {
-            const copy = res.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
+      const network=fetch(req)
+        .then(response => {
+          if(response && response.ok){
+            const copy=response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(req,copy));
           }
-          return res;
+          return response;
         })
         .catch(() => cached);
 

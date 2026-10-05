@@ -3059,7 +3059,7 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
 
-const FX_SIGNAL_APP_VERSION="2026.10.05-v3";
+const FX_SIGNAL_APP_VERSION="2026.10.05-v4";
 let fxSignalRegistration = null;
 let fxSignalRefreshing = false;
 
@@ -3072,24 +3072,90 @@ function hideAppUpdateBanner(){
 }
 
 async function applyAppUpdate(){
-  const reg=fxSignalRegistration || await navigator.serviceWorker?.getRegistration?.();
-  const waiting=reg?.waiting;
+  const btn=document.getElementById("applyAppUpdateBtn");
+  const status=document.getElementById("appUpdateStatus");
 
-  if(waiting){
-    waiting.postMessage({type:"SKIP_WAITING"});
-    return;
+  if(btn){
+    btn.disabled=true;
+    btn.textContent="更新中…";
   }
+  if(status) status.textContent="最新版を準備しています…";
 
-  // If the new worker is still installing, ask the browser to check again.
   try{
-    await reg?.update?.();
-  }catch{}
+    if(!("serviceWorker" in navigator)){
+      throw new Error("service worker unsupported");
+    }
 
-  if(reg?.waiting){
-    reg.waiting.postMessage({type:"SKIP_WAITING"});
-  }else{
-    // Fallback: hard reload and bypass stale page cache as much as possible.
-    location.reload();
+    const reg=fxSignalRegistration || await navigator.serviceWorker.getRegistration();
+    if(!reg){
+      throw new Error("registration not found");
+    }
+    fxSignalRegistration=reg;
+
+    const activateWaiting=worker=>{
+      if(!worker) return false;
+      if(status) status.textContent="更新を適用しています…";
+      worker.postMessage({type:"SKIP_WAITING"});
+      return true;
+    };
+
+    // Best case: a new version is already waiting.
+    if(activateWaiting(reg.waiting)) return;
+
+    // Ask browser to check the server right now.
+    await reg.update();
+
+    if(activateWaiting(reg.waiting)) return;
+
+    // If an update is installing, wait until it becomes installed/waiting.
+    const installing=reg.installing;
+    if(installing){
+      if(status) status.textContent="ダウンロード完了を待っています…";
+
+      await new Promise((resolve,reject)=>{
+        const timer=setTimeout(()=>reject(new Error("install timeout")),15000);
+
+        const done=()=>{
+          clearTimeout(timer);
+          resolve();
+        };
+
+        installing.addEventListener("statechange",()=>{
+          if(installing.state==="installed" || installing.state==="activated"){
+            done();
+          }else if(installing.state==="redundant"){
+            clearTimeout(timer);
+            reject(new Error("worker redundant"));
+          }
+        });
+
+        if(installing.state==="installed" || installing.state==="activated"){
+          done();
+        }
+      });
+
+      if(activateWaiting(reg.waiting)) return;
+
+      // Some browsers may activate directly.
+      if(installing.state==="activated"){
+        if(status) status.textContent="更新完了。再読み込みします…";
+        location.reload();
+        return;
+      }
+    }
+
+    // No waiting/installing worker usually means the browser already has
+    // the newest service worker. Reload once using the newest network HTML.
+    if(status) status.textContent="最新版を読み込み直します…";
+    setTimeout(()=>location.reload(),300);
+
+  }catch(err){
+    console.warn("App update failed:",err);
+    if(status) status.textContent="更新に失敗しました。アプリを一度閉じて開き直してください。";
+    if(btn){
+      btn.disabled=false;
+      btn.textContent="もう一度更新";
+    }
   }
 }
 
@@ -3100,7 +3166,9 @@ if("serviceWorker" in navigator){
   navigator.serviceWorker.addEventListener("controllerchange",()=>{
     if(fxSignalRefreshing) return;
     fxSignalRefreshing=true;
-    location.reload();
+    const status=document.getElementById("appUpdateStatus");
+    if(status) status.textContent="更新完了。最新版を開きます…";
+    setTimeout(()=>location.reload(),250);
   });
 }
 
@@ -3193,9 +3261,12 @@ if("serviceWorker" in navigator){
 
         worker.addEventListener("statechange",()=>{
           if(worker.state==="installed" && navigator.serviceWorker.controller){
+            const status=document.getElementById("appUpdateStatus");
+            if(status) status.textContent="最新版の準備ができました";
             showAppUpdateBanner();
           }
         });
+      });
       });
 
       // Ask for an update check whenever the app opens.
@@ -3217,7 +3288,7 @@ updatePwaInstallUi();
   <div class="app-update-row">
     <div class="app-update-text">
       <strong>新しいバージョンがあります</strong>
-      <span>最新版に更新できます</span>
+      <span id="appUpdateStatus">最新版に更新できます</span>
     </div>
     <div class="app-update-actions">
       <button id="applyAppUpdateBtn" class="mini primary" type="button">更新する</button>
