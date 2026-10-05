@@ -434,6 +434,124 @@ body.force-desktop{
   display:inline-flex;
 }
 
+
+.event-clickable{
+  cursor:pointer;
+  transition:transform .15s ease,border-color .15s ease,background .15s ease;
+}
+.event-clickable:hover{
+  transform:translateY(-1px);
+  border-color:#4c6488;
+  background:#142039;
+}
+.event-clickable:focus-visible{
+  outline:2px solid #6aa8ff;
+  outline-offset:2px;
+}
+.event-help{
+  font-size:11px;
+  color:#8294ad;
+  margin-top:5px;
+}
+.event-modal-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:100;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  background:rgba(2,7,15,.72);
+  backdrop-filter:blur(4px);
+}
+.event-modal{
+  width:min(560px,100%);
+  max-height:min(760px,90vh);
+  overflow:auto;
+  background:#111a2a;
+  border:1px solid #344660;
+  border-radius:20px;
+  box-shadow:0 24px 80px rgba(0,0,0,.55);
+  padding:20px;
+}
+.event-modal-head{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  align-items:flex-start;
+}
+.event-modal h3{
+  font-size:21px;
+  margin:4px 0 0;
+}
+.event-modal-close{
+  flex:0 0 auto;
+  border:1px solid #34445f;
+  background:#172238;
+  color:#d7e2f2;
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  cursor:pointer;
+  font-size:18px;
+}
+.event-modal-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin:14px 0;
+}
+.event-modal-pill{
+  padding:6px 9px;
+  border:1px solid #33425e;
+  background:#0f1727;
+  border-radius:999px;
+  font-size:11px;
+  color:#b7c5d8;
+}
+.event-modal-section{
+  margin-top:16px;
+  padding-top:14px;
+  border-top:1px solid var(--line);
+}
+.event-modal-section strong{
+  display:block;
+  margin-bottom:6px;
+  font-size:13px;
+}
+.event-modal-section p{
+  margin:0;
+  color:#c2cedd;
+  font-size:13px;
+  line-height:1.7;
+}
+.event-values{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-top:10px;
+}
+.event-value{
+  background:#0d1626;
+  border:1px solid #2c3a53;
+  border-radius:12px;
+  padding:10px;
+  text-align:center;
+}
+.event-value span{
+  display:block;
+  color:#8fa0b8;
+  font-size:10px;
+}
+.event-value b{
+  display:block;
+  margin-top:3px;
+  font-size:14px;
+}
+@media(max-width:520px){
+  .event-values{grid-template-columns:1fr}
+}
+
 </style>
 </head>
 <body>
@@ -709,8 +827,123 @@ function titleAlreadyHasCountry(title,country){
   return false;
 }
 
+
+const indicatorKnowledge = [
+  {
+    match:["s&p global services pmi","sp global services pmi"],
+    ja:"S&Pグローバル 米国サービス業PMI",
+    desc:"米国のサービス業で働く購買担当者への調査から、景況感を指数化した指標です。",
+    how:"50を上回ると業況拡大、50を下回ると縮小の目安です。速報値より確報値の方が市場インパクトは小さいことがあります。",
+    fx:"予想を大きく上回れば米景気の強さが意識され、ドル買い材料になることがあります。反対に弱ければドル売り材料になり得ます。"
+  },
+  {
+    match:["s&p global composite pmi","sp global composite pmi"],
+    ja:"S&Pグローバル 米国総合PMI",
+    desc:"製造業とサービス業を合わせ、米国の民間経済全体の景況感を示すPMIです。",
+    how:"50が拡大・縮小の目安。サービス業の比重が大きい米国ではサービスPMIと似た動きをすることがあります。",
+    fx:"景気の強弱を素早く把握する材料です。予想との差が大きいほど、ドルや米金利が反応する可能性があります。"
+  },
+  {
+    match:["ism services pmi"],
+    exclude:["employment","new orders","prices paid"],
+    ja:"米国 ISMサービス業PMI",
+    desc:"ISMが発表する米国サービス業の景況指数です。米国経済の大部分を占めるサービス業の状態を見る重要指標です。",
+    how:"50超で拡大、50未満で縮小の目安です。総合指数だけでなく、雇用・新規受注・価格などの内訳も注目されます。",
+    fx:"重要度の高い米国指標で、予想との差が大きいとドル円などが短時間で大きく動くことがあります。"
+  },
+  {
+    match:["ism services prices paid"],
+    ja:"米国 ISMサービス業 仕入価格指数",
+    desc:"サービス企業が支払う仕入れ価格の動きを示すISMサービス業PMIの内訳です。",
+    how:"上昇するとサービス分野の物価圧力が強い可能性があります。インフレの先行材料として見られることがあります。",
+    fx:"強い数字はインフレ懸念や利下げ期待の後退につながり、米金利やドルが反応する場合があります。"
+  },
+  {
+    match:["ism services new orders"],
+    ja:"米国 ISMサービス業 新規受注指数",
+    desc:"サービス企業への新しい注文が増えているかを示すISMサービス業PMIの内訳です。",
+    how:"新規受注は今後の事業活動につながりやすいため、景気の先行きを見る材料になります。",
+    fx:"単独では総合PMIほど影響しないことが多いですが、総合指数と同方向に強い・弱い場合は市場の反応を補強します。"
+  },
+  {
+    match:["ism services employment"],
+    ja:"米国 ISMサービス業 雇用指数",
+    desc:"サービス企業の雇用状況を示すISMサービス業PMIの内訳です。",
+    how:"上昇すれば雇用拡大、低下すれば雇用環境の弱まりを示す目安になります。",
+    fx:"米雇用統計前の雇用材料として注目されることがあります。総合指数と合わせて見るのが基本です。"
+  },
+  {
+    match:["initial jobless claims"],
+    ja:"米国 新規失業保険申請件数",
+    desc:"米国で新たに失業保険を申請した人の数です。毎週発表されるため、雇用環境の変化を比較的早く確認できます。",
+    how:"件数が増えるほど雇用環境の悪化、減るほど堅調さを示す傾向があります。",
+    fx:"予想より大幅に多ければドル売り、少なければドル買い材料になることがあります。ただし週次なのでノイズもあります。"
+  },
+  {
+    match:["nonfarm payroll","non-farm payroll"],
+    ja:"米国 非農業部門雇用者数",
+    desc:"農業部門を除く米国の雇用者数の増減を示す、米雇用統計の中心的な指標です。",
+    how:"予想との差に加え、失業率・平均時給・前月分の改定も同時に確認します。",
+    fx:"FX市場で特に注目度が高い指標の一つです。発表直後にドル円などが急変することがあります。"
+  },
+  {
+    match:["consumer price index"," cpi","core cpi"],
+    ja:"米国 消費者物価指数（CPI）",
+    desc:"消費者が購入する商品やサービスの価格変化を示す代表的なインフレ指標です。",
+    how:"総合CPIと、変動の大きい食品・エネルギーを除いたコアCPIの両方が注目されます。",
+    fx:"FRBの金利見通しに影響しやすく、予想との差が大きい場合はドルや米金利が大きく動くことがあります。"
+  },
+  {
+    match:["pce price"],
+    ja:"米国 PCE価格指数",
+    desc:"米国の個人消費に基づく物価指数で、FRBが重視するインフレ指標の一つです。",
+    how:"特にコアPCE価格指数が注目されます。前年比と前月比の両方を確認します。",
+    fx:"インフレが予想以上なら高金利が長引くとの思惑からドル高材料、弱ければドル安材料になることがあります。"
+  },
+  {
+    match:["fomc minutes"],
+    ja:"FOMC議事要旨",
+    desc:"前回のFOMCで金融政策についてどんな議論が行われたかをまとめた文書です。",
+    how:"政策金利の発表そのものではありません。利下げ・利上げに慎重か積極的かなど、委員の温度感を読みます。",
+    fx:"市場の想定よりタカ派・ハト派な内容が出ると、米金利やドルが動くことがあります。"
+  },
+  {
+    match:["rate decision"],
+    ja:null,
+    desc:"中央銀行が政策金利を据え置く・引き上げる・引き下げるかを発表するイベントです。",
+    how:"金利変更そのものだけでなく、声明文や今後の見通しも重要です。",
+    fx:"対象通貨が最も大きく動きやすいイベントの一つです。サプライズがあると急変する可能性があります。"
+  }
+];
+
+function indicatorInfoFor(e){
+  const raw=cleanDisplayTitle(e.title,e.country);
+  const s=raw.toLowerCase();
+  const hit=indicatorKnowledge.find(item =>
+    item.match.some(m=>s.includes(m)) &&
+    !(item.exclude||[]).some(x=>s.includes(x))
+  );
+
+  if(hit){
+    let ja=hit.ja;
+    if(!ja && s.includes("rate decision")){
+      const names={NZ:"RBNZ 政策金利発表",US:"FOMC 政策金利発表",JP:"日銀 政策金利発表",GB:"BOE 政策金利発表",EU:"ECB 政策金利発表",AU:"RBA 政策金利発表",CA:"BOC 政策金利発表"};
+      ja=names[e.country] || "政策金利発表";
+    }
+    return {...hit,ja};
+  }
+
+  return {
+    ja:raw.replace(/\bOctober 2026\b/i,"").trim(),
+    desc:"経済や金融市場の状況を確認するために発表される経済イベントです。",
+    how:"予想値・前回値・実際の結果を比較し、市場予想からどれくらい外れたかを確認します。",
+    fx:"予想との差が大きいほど、関連する通貨の値動きが大きくなることがあります。重要度と発表時間を合わせて確認してください。"
+  };
+}
+
 function eventDisplayName(e){
-  const title=cleanDisplayTitle(e.title,e.country);
+  const info=indicatorInfoFor(e);
+  const title=info.ja || cleanDisplayTitle(e.title,e.country);
   return `${titleAlreadyHasCountry(title,e.country)?"":countryFlag(e.country)+" "}${title}`;
 }
 
@@ -967,6 +1200,75 @@ function renderTodayActivity(){
   }
 }
 
+
+function eventKey(e){
+  return String(e.id || e.source_id || `${e.date}|${e.time}|${e.title}`);
+}
+
+function eventByKey(key){
+  return events.find(e=>eventKey(e)===key);
+}
+
+function eventClickableAttrs(e){
+  const key=escapeHtml(eventKey(e));
+  return `data-event-key="${key}" tabindex="0" role="button" aria-label="${escapeHtml(eventDisplayName(e))}の説明を見る"`;
+}
+
+function openEventModal(e){
+  if(!e) return;
+  const info=indicatorInfoFor(e);
+  const date=toUtcDate(e);
+  const p=jstParts(date);
+  const backdrop=document.getElementById("eventModalBackdrop");
+
+  document.getElementById("eventModalKind").textContent=typeLabel(e.type).toUpperCase();
+  document.getElementById("eventModalTitle").textContent=eventDisplayName(e);
+  document.getElementById("eventModalDescription").textContent=info.desc;
+  document.getElementById("eventModalHowTo").textContent=info.how;
+  document.getElementById("eventModalFx").textContent=info.fx;
+
+  document.getElementById("eventModalMeta").innerHTML=[
+    `${countryFlag(e.country)} ${e.country || "—"}`,
+    `${p.date} ${p.time}`,
+    `重要度 ${importanceStars(e)}`,
+    typeLabel(e.type)
+  ].map(x=>`<span class="event-modal-pill">${escapeHtml(x)}</span>`).join("");
+
+  document.getElementById("eventModalValues").innerHTML=`
+    <div class="event-value"><span>結果</span><b>${escapeHtml(e.actual || "未発表")}</b></div>
+    <div class="event-value"><span>予想</span><b>${escapeHtml(e.forecast || "—")}</b></div>
+    <div class="event-value"><span>前回</span><b>${escapeHtml(e.previous || "—")}</b></div>
+  `;
+
+  backdrop.classList.remove("hidden");
+  document.body.style.overflow="hidden";
+}
+
+function closeEventModal(){
+  document.getElementById("eventModalBackdrop")?.classList.add("hidden");
+  document.body.style.overflow="";
+}
+
+document.addEventListener("click",e=>{
+  const row=e.target.closest?.("[data-event-key]");
+  if(row){
+    openEventModal(eventByKey(row.dataset.eventKey));
+  }
+});
+
+document.addEventListener("keydown",e=>{
+  if((e.key==="Enter"||e.key===" ") && e.target.matches?.("[data-event-key]")){
+    e.preventDefault();
+    openEventModal(eventByKey(e.target.dataset.eventKey));
+  }
+  if(e.key==="Escape") closeEventModal();
+});
+
+document.getElementById("eventModalClose")?.addEventListener("click",closeEventModal);
+document.getElementById("eventModalBackdrop")?.addEventListener("click",e=>{
+  if(e.target.id==="eventModalBackdrop") closeEventModal();
+});
+
 function renderHome(){
   renderFocus();
   renderHero("indicator");
@@ -985,10 +1287,11 @@ function renderHome(){
     wrap.innerHTML=list.map(x=>{
       const e=x.e;
       const vals=[e.actual?`結果 ${escapeHtml(e.actual)}`:"",e.forecast?`予想 ${escapeHtml(e.forecast)}`:"",e.previous?`前回 ${escapeHtml(e.previous)}`:""].filter(Boolean).join(" / ");
-      return `<div class="event ${e.type==="rate"?"rate":""}">
+      return `<div class="event event-clickable ${e.type==="rate"?"rate":""}" ${eventClickableAttrs(e)}>
         <div class="when">${x.p.time}</div>
         <div><div class="title">${typePrefix(e.type)}${escapeHtml(eventDisplayName(e))}</div>
-        <div class="desc">${vals||'<span class="beginner-only">詳細値は発表後に更新されます</span>'}</div></div>
+        <div class="desc">${vals||'<span class="beginner-only">詳細値は発表後に更新されます</span>'}</div>
+        <div class="event-help">クリックで指標の説明を見る</div></div>
         ${importanceStarsHtml(e)}</div>`;
     }).join("");
   }
@@ -1023,10 +1326,11 @@ function renderCalendar(){
     .sort((a,b)=>a.d-b.d);
   const wrap=document.getElementById("calendarEvents");
   if(!list.length){wrap.innerHTML='<div class="empty">この日の予定はありません</div>';return}
-  wrap.innerHTML=list.map(x=>`<div class="event ${x.e.type==="rate"?"rate":""}">
+  wrap.innerHTML=list.map(x=>`<div class="event event-clickable ${x.e.type==="rate"?"rate":""}" ${eventClickableAttrs(x.e)}>
     <div class="when">${x.p.time}</div>
     <div><div class="title">${typePrefix(x.e.type)}${escapeHtml(eventDisplayName(x.e))}</div>
-    <div class="desc">重要度 ${x.e.importance}${x.e.actual?` / 結果 ${escapeHtml(x.e.actual)}`:""}${x.e.forecast?` / 予想 ${escapeHtml(x.e.forecast)}`:""}</div></div>
+    <div class="desc">重要度 ${importanceStars(x.e)}${x.e.actual?` / 結果 ${escapeHtml(x.e.actual)}`:""}${x.e.forecast?` / 予想 ${escapeHtml(x.e.forecast)}`:""}</div>
+    <div class="event-help">クリックで指標の説明を見る</div></div>
     ${importanceStarsHtml(x.e)}</div>`).join("");
 }
 
@@ -1267,5 +1571,33 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 
 updateMarkets(); setInterval(updateMarkets,60000); loadData();
 </script>
+
+<div id="eventModalBackdrop" class="event-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="eventModalTitle">
+  <div class="event-modal">
+    <div class="event-modal-head">
+      <div>
+        <div id="eventModalKind" class="section-kicker">ECONOMIC EVENT</div>
+        <h3 id="eventModalTitle">指標詳細</h3>
+      </div>
+      <button id="eventModalClose" class="event-modal-close" type="button" aria-label="閉じる">×</button>
+    </div>
+    <div id="eventModalMeta" class="event-modal-meta"></div>
+    <div id="eventModalValues" class="event-values"></div>
+
+    <div class="event-modal-section">
+      <strong>どんな指標？</strong>
+      <p id="eventModalDescription"></p>
+    </div>
+    <div class="event-modal-section">
+      <strong>見方のポイント</strong>
+      <p id="eventModalHowTo"></p>
+    </div>
+    <div class="event-modal-section">
+      <strong>FXではどう見る？</strong>
+      <p id="eventModalFx"></p>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
