@@ -82,6 +82,119 @@ body.beginner-hidden .beginner-only,body.beginner-hidden .glossary-nav{display:n
   .mobile-nav button{border:0;background:transparent;color:#7f8da6;font-size:11px;padding:7px 2px;border-radius:10px}
   .mobile-nav button.active{background:#16213a;color:#d8e6ff} .mobile-nav span{display:block;font-size:18px;margin-bottom:2px}
 }
+
+.hero-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.today-score{
+  background:linear-gradient(145deg,#14213a,#1a2b47);
+  border:1px solid #2d4565;
+  border-radius:18px;
+  padding:16px;
+}
+.today-score-top{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+}
+.score-label{
+  font-size:12px;
+  color:var(--muted);
+}
+.score-main{
+  font-size:26px;
+  font-weight:900;
+  margin-top:4px;
+}
+.score-badge{
+  padding:7px 10px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:900;
+}
+.score-low{background:#153227;color:#9ce6c1;border:1px solid #2c6a51}
+.score-mid{background:#3a3017;color:#f2d983;border:1px solid #695625}
+.score-high{background:#4a1d26;color:#ffd1d1;border:1px solid #7b2e3a}
+.score-note{
+  margin-top:10px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.5;
+}
+.week-strip{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:8px;
+}
+.day-card{
+  border:1px solid var(--line);
+  background:#101827;
+  border-radius:14px;
+  padding:11px 8px;
+  text-align:center;
+}
+.day-card.today{
+  border-color:#4f77b2;
+  background:#142440;
+}
+.day-name{
+  font-size:11px;
+  color:var(--muted);
+}
+.day-score{
+  font-size:18px;
+  font-weight:900;
+  margin-top:4px;
+}
+.day-caption{
+  font-size:10px;
+  color:#b9c6d9;
+  margin-top:3px;
+}
+.focus-card{
+  background:linear-gradient(145deg,#121d31,#182941);
+  border:1px solid #2b405f;
+  border-radius:18px;
+  padding:16px;
+}
+.focus-title{
+  font-size:12px;
+  color:var(--muted);
+  margin-bottom:8px;
+}
+.focus-event{
+  font-size:22px;
+  font-weight:900;
+}
+.focus-time{
+  font-size:34px;
+  font-weight:900;
+  margin-top:4px;
+}
+.focus-meta{
+  margin-top:10px;
+  color:var(--muted);
+  font-size:12px;
+}
+.section-kicker{
+  font-size:11px;
+  color:var(--muted);
+  margin-bottom:6px;
+  letter-spacing:.03em;
+}
+.priority-stack{
+  display:grid;
+  gap:12px;
+}
+@media(max-width:900px){
+  .hero-grid{grid-template-columns:1fr}
+  .week-strip{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .day-card{padding:9px 4px}
+}
+
 </style>
 </head>
 <body>
@@ -106,47 +219,88 @@ body.beginner-hidden .beginner-only,body.beginner-hidden .glossary-nav{display:n
   <div id="dataStatus" class="status"><span class="dot"></span><span id="statusText">Supabaseに接続中...</span></div>
 
   <section id="home">
-    <div class="grid">
-      <div class="stack">
-        <div class="card">
-          <div class="market-head"><div id="marketNow" class="market-now">市場時間を判定中...</div><div id="overlapBadge" class="overlap">自動判定</div></div>
-          <div class="markets">
-            <div id="tokyoMarket" class="market"><div class="name">🇯🇵 東京</div><div class="state">--</div></div>
-            <div id="londonMarket" class="market"><div class="name">🇪🇺 欧州</div><div class="state">--</div></div>
-            <div id="nyMarket" class="market"><div class="name">🇺🇸 NY</div><div class="state">--</div></div>
-          </div>
-        </div>
+    <div class="stack">
 
-        <div id="rateHero" class="hero rate">
-          <div class="eyebrow">次の政策金利イベント</div>
-          <div class="hero-top">
-            <div><h4 id="rateTitle">読み込み中...</h4><div id="rateTime" class="event-time">--:--</div></div>
-            <div class="tag rate">🏦 金利</div>
-          </div>
-          <div id="rateCount" class="count">Supabaseから取得しています</div>
+      <div class="card">
+        <div class="market-head">
+          <div id="marketNow" class="market-now">市場時間を判定中...</div>
+          <div id="overlapBadge" class="overlap">自動判定</div>
         </div>
-
-        <div class="hero">
-          <div class="eyebrow">次の重要指標</div>
-          <div class="hero-top">
-            <div><h4 id="indicatorTitle">読み込み中...</h4><div id="indicatorTime" class="event-time">--:--</div></div>
-            <div class="tag hot">🔥 重要度3</div>
-          </div>
-          <div id="indicatorCount" class="count">Supabaseから取得しています</div>
+        <div class="markets">
+          <div id="tokyoMarket" class="market"><div class="name">🇯🇵 東京</div><div class="state">--</div></div>
+          <div id="londonMarket" class="market"><div class="name">🇪🇺 欧州</div><div class="state">--</div></div>
+          <div id="nyMarket" class="market"><div class="name">🇺🇸 NY</div><div class="state">--</div></div>
         </div>
       </div>
 
-      <div class="stack">
+      <div class="today-score">
+        <div class="today-score-top">
+          <div>
+            <div class="score-label">今日の市場アクティビティ予測</div>
+            <div id="todayScoreMain" class="score-main">判定中...</div>
+          </div>
+          <div id="todayScoreBadge" class="score-badge score-mid">--</div>
+        </div>
+        <div id="todayScoreNote" class="score-note">
+          重要指標・政策金利・要人発言の件数から、値動きの出やすさを推定します。
+        </div>
+      </div>
+
+      <div class="hero-grid">
+        <div class="focus-card">
+          <div class="focus-title">次に見るべきイベント</div>
+          <div id="focusTitle" class="focus-event">読み込み中...</div>
+          <div id="focusTime" class="focus-time">--:--</div>
+          <div id="focusMeta" class="focus-meta">Supabaseから取得しています</div>
+        </div>
+
+        <div class="priority-stack">
+          <div id="rateHero" class="hero rate">
+            <div class="eyebrow">次の政策金利イベント</div>
+            <div class="hero-top">
+              <div><h4 id="rateTitle">読み込み中...</h4><div id="rateTime" class="event-time">--:--</div></div>
+              <div class="tag rate">🏦 金利</div>
+            </div>
+            <div id="rateCount" class="count">Supabaseから取得しています</div>
+          </div>
+
+          <div class="hero">
+            <div class="eyebrow">次の重要指標</div>
+            <div class="hero-top">
+              <div><h4 id="indicatorTitle">読み込み中...</h4><div id="indicatorTime" class="event-time">--:--</div></div>
+              <div class="tag hot">🔥 重要度3</div>
+            </div>
+            <div id="indicatorCount" class="count">Supabaseから取得しています</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
         <div class="card">
+          <div class="section-kicker">TODAY</div>
           <h3>今日の予定 <span style="font-size:10px;padding:3px 6px;border-radius:999px;background:#16345d;color:#bcd6ff">LIVE</span></h3>
           <div id="homeTimeline" class="timeline"><div class="empty">読み込み中...</div></div>
         </div>
-        <div class="card risk">
-          <h3>今日の注意時間</h3>
-          <strong id="riskTitle">予定を確認中...</strong>
-          <p id="riskText">重要イベントの時間帯を自動でまとめます。</p>
+
+        <div class="stack">
+          <div class="card risk">
+            <div class="section-kicker">RISK WINDOW</div>
+            <h3>今日の注意時間</h3>
+            <strong id="riskTitle">予定を確認中...</strong>
+            <p id="riskText">重要イベントの時間帯を自動でまとめます。</p>
+          </div>
+
+          <div class="card">
+            <div class="section-kicker">THIS WEEK</div>
+            <h3>月〜金の市場アクティビティ予測</h3>
+            <div id="weekStrip" class="week-strip"></div>
+            <p class="calendar-help" style="margin-top:10px">
+              ※「高い」は値動きが出やすい予測で、利益が出やすいという意味ではありません。
+            </p>
+          </div>
         </div>
       </div>
+
     </div>
   </section>
 
@@ -269,8 +423,128 @@ function renderHero(kind){
   document.getElementById(prefix+"Count").innerHTML=`<b>${formatCountdown(next.date)}</b>${details.length?"　"+details.join(" / "):""}`;
 }
 
+
+function activityScoreForDate(dateKey){
+  const dayEvents = events
+    .map(e=>({e,p:jstParts(toUtcDate(e))}))
+    .filter(x=>x.p.date===dateKey)
+    .map(x=>x.e);
+
+  let score = 0;
+  let highCount = 0;
+  let rateCount = 0;
+
+  for(const e of dayEvents){
+    if(e.type === "rate"){
+      score += 4;
+      rateCount++;
+    } else if(e.type === "speech"){
+      score += e.importance >= 3 ? 2.5 : 1.5;
+    } else {
+      if(e.importance >= 3){
+        score += 3;
+        highCount++;
+      } else if(e.importance === 2){
+        score += 1;
+      } else {
+        score += 0.5;
+      }
+    }
+  }
+
+  return {score, count:dayEvents.length, highCount, rateCount};
+}
+
+function activityLabel(score){
+  if(score >= 8) return {label:"高", text:"値動き大きめ・慎重", cls:"score-high"};
+  if(score >= 4) return {label:"中", text:"比較的機会あり", cls:"score-mid"};
+  return {label:"低", text:"材料少なめ", cls:"score-low"};
+}
+
+function renderWeekActivity(){
+  const strip = document.getElementById("weekStrip");
+  const now = new Date();
+  const jstNow = new Date(new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).format(now));
+  const day = jstNow.getDay();
+  const monday = new Date(jstNow);
+  const offset = day === 0 ? -6 : 1 - day;
+  monday.setDate(jstNow.getDate() + offset);
+
+  const labels = ["月","火","水","木","金"];
+  const todayKey = todayJst();
+
+  strip.innerHTML = labels.map((label,i)=>{
+    const d = new Date(monday);
+    d.setDate(monday.getDate()+i);
+    const key = dateKeyLocal(d);
+    const a = activityScoreForDate(key);
+    const meta = activityLabel(a.score);
+    const isToday = key === todayKey ? " today" : "";
+    return `<div class="day-card${isToday}">
+      <div class="day-name">${label}</div>
+      <div class="day-score">${Math.round(a.score)}</div>
+      <div class="day-caption">${meta.text}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderFocus(){
+  const future = events
+    .map(e=>({e,date:toUtcDate(e)}))
+    .filter(x=>x.date > Date.now()-5*60*1000)
+    .sort((a,b)=>a.date-b.date);
+
+  const weighted = future.sort((a,b)=>{
+    const wa = (a.e.type==="rate"?5:0) + Number(a.e.importance||0);
+    const wb = (b.e.type==="rate"?5:0) + Number(b.e.importance||0);
+    const soonA = Math.max(0, 24*60 - (a.date-Date.now())/60000);
+    const soonB = Math.max(0, 24*60 - (b.date-Date.now())/60000);
+    return (wb + soonB/10000) - (wa + soonA/10000);
+  });
+
+  const pick = weighted[0];
+  if(!pick){
+    document.getElementById("focusTitle").textContent="大きな注目イベントなし";
+    document.getElementById("focusTime").textContent="--:--";
+    document.getElementById("focusMeta").textContent="現在取得済みの予定では、大きな材料はありません";
+    return;
+  }
+  const p = jstParts(pick.date);
+  document.getElementById("focusTitle").textContent=`${typePrefix(pick.e.type)}${countryFlag(pick.e.country)} ${pick.e.title}`;
+  document.getElementById("focusTime").textContent=p.time;
+  document.getElementById("focusMeta").textContent=`${formatCountdown(pick.date)} ・ 重要度 ${pick.e.importance}`;
+}
+
+function renderTodayActivity(){
+  const key = todayJst();
+  const a = activityScoreForDate(key);
+  const meta = activityLabel(a.score);
+  const main = document.getElementById("todayScoreMain");
+  const badge = document.getElementById("todayScoreBadge");
+  const note = document.getElementById("todayScoreNote");
+
+  main.textContent = meta.text;
+  badge.textContent = `${meta.label} / ${Math.round(a.score)}点`;
+  badge.className = `score-badge ${meta.cls}`;
+
+  if(a.rateCount > 0){
+    note.textContent = `政策金利イベント ${a.rateCount}件、重要度3の指標 ${a.highCount}件。値動きが大きくなりやすい日です。`;
+  } else if(a.highCount > 0){
+    note.textContent = `重要度3の指標が ${a.highCount}件あります。発表時間前後は値動きに注意。`;
+  } else if(a.count > 0){
+    note.textContent = `予定は ${a.count}件ありますが、大型材料は少なめです。`;
+  } else {
+    note.textContent = "現在取得しているデータでは、今日の大きな予定はありません。";
+  }
+}
+
 function renderHome(){
-  renderHero("rate"); renderHero("indicator");
+  renderHero("rate");
+  renderHero("indicator");
+  renderFocus();
+  renderTodayActivity();
+  renderWeekActivity();
+
   const key=todayJst();
   const list=events.map(e=>({e,p:jstParts(toUtcDate(e)),d:toUtcDate(e)})).filter(x=>x.p.date===key).sort((a,b)=>a.d-b.d);
   const wrap=document.getElementById("homeTimeline");
@@ -286,6 +560,7 @@ function renderHome(){
         <div class="bar ${barClass(e)}"></div></div>`;
     }).join("");
   }
+
   const high=list.filter(x=>x.e.importance>=3||x.e.type==="rate");
   if(high.length){
     const first=high[0].p.time,last=high[high.length-1].p.time;
