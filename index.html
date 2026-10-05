@@ -385,7 +385,7 @@ body.force-desktop{
 }
 .score-guide{
   display:grid;
-  grid-template-columns:repeat(3,1fr);
+  grid-template-columns:repeat(4,1fr);
   gap:8px;
   margin-top:12px;
 }
@@ -826,24 +826,28 @@ body.force-desktop{
             <h3>月〜金の市場アクティビティ予測</h3>
             <div id="weekStrip" class="week-strip"></div>
 
-            <div class="score-guide">
+            <div class="score-guide score-guide-strict">
               <div class="score-guide-item">
-                <strong>0〜3点</strong>
-                <span>材料少なめ<br>大きな値動き要因は少なめ</span>
+                <strong>0〜2.1点</strong>
+                <span>静か<br>大型材料はほぼなし</span>
               </div>
               <div class="score-guide-item">
-                <strong>4〜7点</strong>
-                <span>材料あり<br>指標時間を意識したい日</span>
+                <strong>2.2〜4.4点</strong>
+                <span>通常<br>重要指標が1件程度</span>
               </div>
               <div class="score-guide-item">
-                <strong>8点以上</strong>
-                <span>値動き大きめ<br>重要イベント集中・慎重</span>
+                <strong>4.5〜7.4点</strong>
+                <span>活発<br>重要材料が複数</span>
+              </div>
+              <div class="score-guide-item">
+                <strong>7.5点以上</strong>
+                <span>高警戒<br>金利・大型指標が集中</span>
               </div>
             </div>
 
             <p class="calendar-help" style="margin-top:10px">
-              点数は重要指標・政策金利・要人発言などから算出した「値動きの出やすさ」の目安です。
-              高得点＝利益が出やすい、という意味ではありません。
+              ★1はほぼ加点せず、★2も小さく加点。★3・政策金利・重要イベントの集中を強く評価します。
+              点数は「値動きの出やすさ」の目安で、売買推奨や勝ちやすさを示すものではありません。
             </p>
           </div>
         </div>
@@ -1152,6 +1156,111 @@ const indicatorKnowledge = [
 ];
 
 
+
+function localizeIndicatorGeneric(title, country=""){
+  let raw=String(title||"").trim();
+  let t=raw;
+
+  // Country / region prefixes.
+  const prefixes=[
+    [/^US:\s*/i,""],[/^USA:\s*/i,""],[/^United States:\s*/i,""],
+    [/^EU:\s*/i,"ユーロ圏 "],[/^Eurozone:\s*/i,"ユーロ圏 "],
+    [/^Germany:\s*/i,"ドイツ "],[/^German:\s*/i,"ドイツ "],
+    [/^France:\s*/i,"フランス "],[/^French:\s*/i,"フランス "],
+    [/^Italy:\s*/i,"イタリア "],[/^Italian:\s*/i,"イタリア "],
+    [/^Spain:\s*/i,"スペイン "],[/^Spanish:\s*/i,"スペイン "],
+    [/^UK:\s*/i,"英国 "],[/^United Kingdom:\s*/i,"英国 "],
+    [/^Japan:\s*/i,"日本 "],[/^JP:\s*/i,"日本 "],
+    [/^Australia:\s*/i,"豪州 "],[/^Canada:\s*/i,"カナダ "],
+    [/^New Zealand:\s*/i,"ニュージーランド "],[/^Switzerland:\s*/i,"スイス "]
+  ];
+  for(const [re,repl] of prefixes) t=t.replace(re,repl);
+
+  const replacements=[
+    [/\bCore Harmonized Index of Consumer Prices\b/gi,"コア消費者物価指数（HICP）"],
+    [/\bHarmonized Index of Consumer Prices\b/gi,"消費者物価指数（HICP）"],
+    [/\bConsumer Price Index\b/gi,"消費者物価指数（CPI）"],
+    [/\bProducer Price Index\b/gi,"生産者物価指数（PPI）"],
+    [/\bPPI\b/g,"生産者物価指数（PPI）"],
+    [/\bGross Domestic Product\b/gi,"国内総生産（GDP）"],
+    [/\bGDP\b/g,"GDP"],
+    [/\bRetail Sales\b/gi,"小売売上高"],
+    [/\bIndustrial Production\b/gi,"鉱工業生産"],
+    [/\bManufacturing Production\b/gi,"製造業生産"],
+    [/\bFactory Orders\b/gi,"製造業受注"],
+    [/\bDurable Goods Orders\b/gi,"耐久財受注"],
+    [/\bTrade Balance\b/gi,"貿易収支"],
+    [/\bCurrent Account\b/gi,"経常収支"],
+    [/\bUnemployment Rate\b/gi,"失業率"],
+    [/\bEmployment Change\b/gi,"雇用者数変化"],
+    [/\bAverage Hourly Earnings\b/gi,"平均時給"],
+    [/\bJob Openings\b/gi,"求人件数"],
+    [/\bJOLTS\b/g,"JOLTS求人件数"],
+    [/\bADP Employment Change\b/gi,"ADP雇用者数"],
+    [/\bBuilding Permits\b/gi,"建設許可件数"],
+    [/\bHousing Starts\b/gi,"住宅着工件数"],
+    [/\bExisting Home Sales\b/gi,"中古住宅販売件数"],
+    [/\bNew Home Sales\b/gi,"新築住宅販売件数"],
+    [/\bPending Home Sales\b/gi,"中古住宅販売保留"],
+    [/\bConsumer Confidence\b/gi,"消費者信頼感指数"],
+    [/\bConsumer Sentiment\b/gi,"消費者信頼感指数"],
+    [/\bMichigan Consumer Sentiment\b/gi,"ミシガン大学 消費者信頼感指数"],
+    [/\bBusiness Confidence\b/gi,"企業景況感指数"],
+    [/\bServices PMI\b/gi,"サービス業PMI"],
+    [/\bManufacturing PMI\b/gi,"製造業PMI"],
+    [/\bComposite PMI\b/gi,"総合PMI"],
+    [/\bConstruction PMI\b/gi,"建設業PMI"],
+    [/\bPurchasing Managers'? Index\b/gi,"購買担当者景気指数（PMI）"],
+    [/\bImport Prices\b/gi,"輸入物価指数"],
+    [/\bExport Prices\b/gi,"輸出物価指数"],
+    [/\bWholesale Inventories\b/gi,"卸売在庫"],
+    [/\bBusiness Inventories\b/gi,"企業在庫"],
+    [/\bPersonal Income\b/gi,"個人所得"],
+    [/\bPersonal Spending\b/gi,"個人支出"],
+    [/\bPersonal Consumption Expenditures\b/gi,"個人消費支出（PCE）"],
+    [/\bPCE Price Index\b/gi,"PCE価格指数"],
+    [/\bCore PCE Price Index\b/gi,"コアPCE価格指数"],
+    [/\bInitial Jobless Claims\b/gi,"新規失業保険申請件数"],
+    [/\bContinuing Jobless Claims\b/gi,"失業保険継続受給者数"],
+    [/\bNonfarm Payrolls?\b/gi,"非農業部門雇用者数"],
+    [/\bNon-Farm Payrolls?\b/gi,"非農業部門雇用者数"],
+    [/\bMoney Supply\b/gi,"マネーサプライ"],
+    [/\bBank Lending\b/gi,"銀行貸出"],
+    [/\bEconomic Sentiment\b/gi,"経済信頼感指数"],
+    [/\bZEW Economic Sentiment\b/gi,"ZEW景況感指数"],
+    [/\bIFO Business Climate\b/gi,"IFO企業景況感指数"],
+    [/\bTankan\b/gi,"日銀短観"],
+    [/\bMachine Orders\b/gi,"機械受注"],
+    [/\bHousehold Spending\b/gi,"家計支出"],
+    [/\bLabor Cash Earnings\b/gi,"毎月勤労統計 現金給与総額"],
+    [/\bLabour Cash Earnings\b/gi,"毎月勤労統計 現金給与総額"],
+    [/\bLeading Economic Index\b/gi,"景気先行指数"],
+    [/\bCoincident Index\b/gi,"景気一致指数"],
+    [/\bTreasury Budget\b/gi,"米財政収支"],
+    [/\bFederal Budget\b/gi,"米財政収支"],
+    [/\bCrude Oil Inventories\b/gi,"原油在庫"],
+    [/\bNatural Gas Storage\b/gi,"天然ガス在庫"],
+    [/\bBill Auction\b/gi,"短期国債入札"],
+    [/\bNote Auction\b/gi,"国債入札"],
+    [/\bBond Auction\b/gi,"国債入札"],
+    [/\bMoM\b/g,"前月比"],
+    [/\bQoQ\b/g,"前期比"],
+    [/\bYoY\b/g,"前年比"],
+    [/\bFinal\b/gi,"確報"],
+    [/\bFlash\b/gi,"速報"],
+    [/\bPreliminary\b/gi,"速報"]
+  ];
+
+  for(const [re,repl] of replacements) t=t.replace(re,repl);
+
+  // Clean common punctuation/spacing left by mixed-language source names.
+  t=t.replace(/\s+/g," ").replace(/\s+\)/g,")").trim();
+
+  // If there is still a fully English indicator title, keep the source text
+  // rather than producing a misleading translation.
+  return t;
+}
+
 function localizeEventTitle(title, country="", type="indicator"){
   const raw=String(title||"").trim();
   const s=raw.toLowerCase();
@@ -1220,10 +1329,12 @@ function localizeEventTitle(title, country="", type="indicator"){
   }
 
   if(type==="central_bank"){
-    return `${raw}（中央銀行関連）`;
+    const translated=localizeIndicatorGeneric(raw,country);
+    return translated!==raw ? `${translated}（中央銀行関連）` : `${raw}（中央銀行関連）`;
   }
 
-  return raw;
+  const translated=localizeIndicatorGeneric(raw,country);
+  return translated;
 }
 
 function indicatorInfoFor(e){
@@ -1245,7 +1356,9 @@ function indicatorInfoFor(e){
 
   return {
     ja:localizeEventTitle(
-      raw.replace(/\b(January|February|March|April|May|June|July|August|September|October|November|December) 2026\b/i,"").trim(),
+      raw
+        .replace(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+20\d{2}\b/i,"")
+        .trim(),
       e.country,
       e.type
     ),
@@ -1503,36 +1616,73 @@ function activityScoreForDate(dateKey){
   let score = 0;
   let highCount = 0;
   let rateCount = 0;
+  let mediumCount = 0;
+  let majorSpeechCount = 0;
 
   for(const e of dayEvents){
     const imp = correctedClientImportance(e);
+
     if(e.type === "rate"){
-      score += 4;
+      // Policy-rate decisions are exceptional.
+      score += 4.5;
       rateCount++;
-    } else if(e.type === "central_bank"){
-      score += imp >= 3 ? 3 : 2;
+      continue;
+    }
+
+    if(e.type === "central_bank"){
+      score += imp >= 3 ? 2.4 : imp === 2 ? 0.8 : 0.2;
       if(imp >= 3) highCount++;
-    } else if(e.type === "speech"){
-      score += imp >= 3 ? 2.5 : 1.5;
-    } else {
+      continue;
+    }
+
+    if(e.type === "speech"){
       if(imp >= 3){
-        score += 3;
-        highCount++;
-      } else if(imp === 2){
-        score += 1;
-      } else {
-        score += 0.5;
+        score += 1.4;
+        majorSpeechCount++;
+      }else if(imp === 2){
+        score += 0.35;
+      }else{
+        score += 0.05;
       }
+      continue;
+    }
+
+    if(imp >= 3){
+      // A normal high-impact release matters, but one release alone
+      // should not automatically make the entire day "high".
+      score += 2.2;
+      highCount++;
+    }else if(imp === 2){
+      score += 0.35;
+      mediumCount++;
+    }else{
+      // Low-impact rows exist in large numbers; almost ignore them.
+      score += 0.05;
     }
   }
 
-  return {score, count:dayEvents.length, highCount, rateCount};
+  // Concentration bonuses: multiple major releases on one day matter
+  // much more than many low-impact rows.
+  if(highCount >= 2) score += 1.2;
+  if(highCount >= 3) score += 1.5;
+  if(rateCount >= 1 && highCount >= 1) score += 1.5;
+  if(majorSpeechCount >= 2) score += 0.6;
+
+  return {
+    score,
+    count:dayEvents.length,
+    highCount,
+    rateCount,
+    mediumCount,
+    majorSpeechCount
+  };
 }
 
 function activityLabel(score){
-  if(score >= 8) return {label:"高", text:"値動き大きめ・慎重", cls:"score-high"};
-  if(score >= 4) return {label:"中", text:"比較的機会あり", cls:"score-mid"};
-  return {label:"低", text:"材料少なめ", cls:"score-low"};
+  if(score >= 7.5) return {label:"高警戒", text:"重要材料が集中", cls:"score-high"};
+  if(score >= 4.5) return {label:"活発", text:"値動きが出やすい", cls:"score-high"};
+  if(score >= 2.2) return {label:"通常", text:"注目材料あり", cls:"score-mid"};
+  return {label:"静か", text:"大きな材料は少なめ", cls:"score-low"};
 }
 
 function renderWeekActivity(){
@@ -1611,11 +1761,13 @@ function renderTodayActivity(){
   badge.className = `score-badge ${meta.cls}`;
 
   if(a.rateCount > 0){
-    note.textContent = `政策金利イベント ${a.rateCount}件、重要度3の指標 ${a.highCount}件。値動きが大きくなりやすい日です。`;
-  } else if(a.highCount > 0){
-    note.textContent = `重要度3の指標が ${a.highCount}件あります。発表時間前後は値動きに注意。`;
+    note.textContent = `政策金利イベント ${a.rateCount}件、重要度3の指標 ${a.highCount}件。通常より値動きが荒くなる可能性があります。`;
+  } else if(a.highCount >= 2){
+    note.textContent = `重要度3の指標が ${a.highCount}件集中しています。発表時間帯は特に注意。`;
+  } else if(a.highCount === 1){
+    note.textContent = `重要度3の指標が1件あります。それ以外の材料は点数への影響を控えめに計算しています。`;
   } else if(a.count > 0){
-    note.textContent = `予定は ${a.count}件ありますが、大型材料は少なめです。`;
+    note.textContent = `予定は ${a.count}件ありますが、重要度の高い材料は少なめです。`;
   } else {
     note.textContent = "現在取得しているデータでは、今日の大きな予定はありません。";
   }
