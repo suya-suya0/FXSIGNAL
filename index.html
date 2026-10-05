@@ -602,25 +602,34 @@ function renderFocus(){
     .filter(x=>x.date > Date.now()-5*60*1000)
     .sort((a,b)=>a.date-b.date);
 
-  const weighted = future.sort((a,b)=>{
-    const wa = (a.e.type==="rate"?5:0) + Number(a.e.importance||0);
-    const wb = (b.e.type==="rate"?5:0) + Number(b.e.importance||0);
-    const soonA = Math.max(0, 24*60 - (a.date-Date.now())/60000);
-    const soonB = Math.max(0, 24*60 - (b.date-Date.now())/60000);
-    return (wb + soonB/10000) - (wa + soonA/10000);
-  });
+  // 「次に見るべき」は、まず重要イベントの中から時系列で最も近いものを選ぶ。
+  // これにより、後日の政策金利が今日のISMなどを押し出さない。
+  const important = future.filter(x =>
+    x.e.type === "rate" ||
+    (x.e.type === "indicator" && Number(x.e.importance||0) >= 3) ||
+    (x.e.type === "speech" && Number(x.e.importance||0) >= 3)
+  );
 
-  const pick = weighted[0];
+  const pick = important[0] || future[0];
+
   if(!pick){
     document.getElementById("focusTitle").textContent="大きな注目イベントなし";
     document.getElementById("focusTime").textContent="--:--";
     document.getElementById("focusMeta").textContent="現在取得済みの予定では、大きな材料はありません";
     return;
   }
+
   const p = jstParts(pick.date);
   document.getElementById("focusTitle").textContent=`${typePrefix(pick.e.type)}${countryFlag(pick.e.country)} ${pick.e.title}`;
   document.getElementById("focusTime").textContent=p.time;
-  document.getElementById("focusMeta").textContent=`${formatCountdown(pick.date)} ・ 重要度 ${pick.e.importance}`;
+
+  const kind =
+    pick.e.type === "rate" ? "政策金利" :
+    pick.e.type === "speech" ? "要人発言" :
+    "重要指標";
+
+  document.getElementById("focusMeta").textContent=
+    `${formatCountdown(pick.date)} ・ ${kind} ・ 重要度 ${pick.e.importance}`;
 }
 
 function renderTodayActivity(){
