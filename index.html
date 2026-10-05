@@ -800,8 +800,9 @@ body.force-desktop{
   border:1px solid #354a69;
   background:#17233a;
   color:#dce8f8;
-  width:34px;
-  height:34px;
+  width:40px;
+  height:40px;
+  touch-action:manipulation;
   border-radius:50%;
   cursor:pointer;
 }
@@ -919,7 +920,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.05-v6">
+<meta name="fx-signal-version" content="2026.10.05-v7">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -1166,6 +1167,9 @@ body.force-desktop{
             <button id="testRealNotificationBtn" class="mini" type="button">本番通知をテスト</button>
           </div>
           <div id="notificationSetupStatus" class="notification-setup-status">状態を確認中...</div>
+          <div id="backgroundPushStatus" class="notification-setup-status">
+            バックグラウンド通知：受信機能を準備済み。Supabase側のPush送信設定が必要です。
+          </div>
         </div>
       </div>
 
@@ -2094,6 +2098,15 @@ function closeEventModal(){
   if(!dayPopupOpen) document.body.style.overflow="";
 }
 
+
+document.addEventListener("pointerup",e=>{
+  if(e.target.closest?.("#notificationToastClose")){
+    e.preventDefault();
+    e.stopPropagation();
+    closeNotificationToast();
+  }
+});
+
 document.addEventListener("click",e=>{
   if(e.target.closest?.("#dayPopupClose")){
     e.preventDefault();
@@ -2658,6 +2671,23 @@ function notificationKey(e,minutes){
   return `${eventKey(e)}|${minutes}`;
 }
 
+
+function closeNotificationToast(){
+  const box=document.getElementById("notificationToast");
+  if(box) box.classList.add("hidden");
+
+  if(showNotificationToast._timer){
+    clearTimeout(showNotificationToast._timer);
+    showNotificationToast._timer=null;
+  }
+}
+
+
+function closeNotificationToast(){
+  clearTimeout(showNotificationToast._timer);
+  document.getElementById("notificationToast")?.classList.add("hidden");
+}
+
 function showNotificationToast(e,minutes){
   const box=document.getElementById("notificationToast");
   if(!box) return;
@@ -2681,8 +2711,13 @@ function showNotificationToast(e,minutes){
   ].filter(Boolean).map(x=>`<span class="notification-chip">${escapeHtml(x)}</span>`).join("");
 
   box.classList.remove("hidden");
-  clearTimeout(showNotificationToast._timer);
-  showNotificationToast._timer=setTimeout(()=>box.classList.add("hidden"),12000);
+
+  if(showNotificationToast._timer){
+    clearTimeout(showNotificationToast._timer);
+  }
+  showNotificationToast._timer=setTimeout(()=>{
+    closeNotificationToast();
+  },12000);
 }
 
 async function fireEventNotification(e,minutes){
@@ -2893,8 +2928,10 @@ function initNotificationControls(){
 
   document.getElementById("requestNotificationPermissionBtn")?.addEventListener("click",requestNotificationPermission);
   document.getElementById("testRealNotificationBtn")?.addEventListener("click",testRealNotification);
-  document.getElementById("notificationToastClose")?.addEventListener("click",()=>{
-    document.getElementById("notificationToast")?.classList.add("hidden");
+  document.getElementById("notificationToastClose")?.addEventListener("click",e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    closeNotificationToast();
   });
 
 
@@ -3060,7 +3097,7 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
 
-const FX_SIGNAL_APP_VERSION="2026.10.05-v6";
+const FX_SIGNAL_APP_VERSION="2026.10.05-v7";
 
 let fxSignalLatestVersion = FX_SIGNAL_APP_VERSION;
 
