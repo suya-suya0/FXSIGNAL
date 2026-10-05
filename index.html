@@ -3059,7 +3059,7 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
 
-const FX_SIGNAL_APP_VERSION="2026.10.05-v4";
+const FX_SIGNAL_APP_VERSION="2026.10.05-v4.1";
 let fxSignalRegistration = null;
 let fxSignalRefreshing = false;
 
@@ -3266,7 +3266,6 @@ if("serviceWorker" in navigator){
             showAppUpdateBanner();
           }
         });
-      });
       });
 
       // Ask for an update check whenever the app opens.
