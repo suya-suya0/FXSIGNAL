@@ -362,6 +362,55 @@ body.force-desktop{
 }
 .source-link:hover{text-decoration:underline}
 
+
+.importance-filter{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-top:10px;
+}
+.importance-btn{
+  border:1px solid #34445f;
+  background:#121b2d;
+  color:#9eacc0;
+  padding:10px 8px;
+  border-radius:11px;
+  font-weight:900;
+  cursor:pointer;
+}
+.importance-btn.active{
+  background:#19345f;
+  color:#dce9ff;
+  border-color:#4d78b8;
+}
+.score-guide{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-top:12px;
+}
+.score-guide-item{
+  border:1px solid var(--line);
+  background:#0f1727;
+  border-radius:12px;
+  padding:10px 8px;
+  text-align:center;
+}
+.score-guide-item strong{
+  display:block;
+  font-size:13px;
+  margin-bottom:3px;
+}
+.score-guide-item span{
+  display:block;
+  font-size:10px;
+  color:var(--muted);
+  line-height:1.35;
+}
+@media(max-width:520px){
+  .score-guide{grid-template-columns:1fr}
+}
+
 </style>
 </head>
 <body>
@@ -439,8 +488,25 @@ body.force-desktop{
             <div class="section-kicker">THIS WEEK</div>
             <h3>月〜金の市場アクティビティ予測</h3>
             <div id="weekStrip" class="week-strip"></div>
+
+            <div class="score-guide">
+              <div class="score-guide-item">
+                <strong>0〜3点</strong>
+                <span>材料少なめ<br>大きな値動き要因は少なめ</span>
+              </div>
+              <div class="score-guide-item">
+                <strong>4〜7点</strong>
+                <span>材料あり<br>指標時間を意識したい日</span>
+              </div>
+              <div class="score-guide-item">
+                <strong>8点以上</strong>
+                <span>値動き大きめ<br>重要イベント集中・慎重</span>
+              </div>
+            </div>
+
             <p class="calendar-help" style="margin-top:10px">
-              ※「高い」は値動きが出やすい予測で、利益が出やすいという意味ではありません。
+              点数は重要指標・政策金利・要人発言などから算出した「値動きの出やすさ」の目安です。
+              高得点＝利益が出やすい、という意味ではありません。
             </p>
           </div>
         </div>
@@ -552,6 +618,16 @@ body.force-desktop{
         <label class="setting-row"><div><strong>初心者モード</strong><small>やさしい補足説明と用語集を表示</small></div><input id="beginnerToggle" type="checkbox" checked></label>
 
         <div class="view-mode-block">
+          <strong>重要指標の表示レベル</strong>
+          <small>経済指標に適用。政策金利・中央銀行イベントは常に表示します</small>
+          <div class="importance-filter">
+            <button class="importance-btn" data-min-importance="1" type="button">重要度1〜3</button>
+            <button class="importance-btn" data-min-importance="2" type="button">重要度2〜3</button>
+            <button class="importance-btn" data-min-importance="3" type="button">重要度3のみ</button>
+          </div>
+        </div>
+
+        <div class="view-mode-block">
           <strong>画面レイアウト</strong>
           <small>端末に関係なくPC版 / スマホ版を強制表示できます</small>
           <div class="view-mode-grid">
@@ -654,6 +730,16 @@ function correctedClientImportance(e){
   return isMajorFxEvent(e) ? 3 : Number(e.importance||2);
 }
 
+function getMinImportance(){
+  return Number(localStorage.getItem("fxsignal_min_importance") || 1);
+}
+
+function passesImportanceFilter(e){
+  // Policy-rate / central-bank / speeches are always shown.
+  if(e.type==="rate" || e.type==="central_bank" || e.type==="speech") return true;
+  return correctedClientImportance(e) >= getMinImportance();
+}
+
 function barClass(e){
   if(e.type==="rate") return "gold";
   return correctedClientImportance(e)>=3?"red":"yellow";
@@ -684,7 +770,10 @@ function eventKey(e){
 
 function renderHero(kind){
   const pool=events
-    .filter(e=>kind==="rate"?e.type==="rate":(e.type==="indicator"&&isMajorFxEvent(e)))
+    .filter(e=>kind==="rate"
+      ? e.type==="rate"
+      : (e.type==="indicator" && correctedClientImportance(e) >= getMinImportance())
+    )
     .filter(e=>kind==="rate" || eventKey(e)!==currentFocusKey)
     .map(e=>({e,date:toUtcDate(e)}))
     .filter(x=>x.date>Date.now()-5*60*1000)
@@ -844,7 +933,10 @@ function renderHome(){
   renderWeekActivity();
 
   const key=todayJst();
-  const list=events.map(e=>({e,p:jstParts(toUtcDate(e)),d:toUtcDate(e)})).filter(x=>x.p.date===key).sort((a,b)=>a.d-b.d);
+  const list=events
+    .map(e=>({e,p:jstParts(toUtcDate(e)),d:toUtcDate(e)}))
+    .filter(x=>x.p.date===key && passesImportanceFilter(x.e))
+    .sort((a,b)=>a.d-b.d);
   const wrap=document.getElementById("homeTimeline");
   if(!list.length){wrap.innerHTML='<div class="empty">今日の予定はありません</div>';}
   else {
@@ -881,7 +973,11 @@ function renderCalendar(){
   document.getElementById("calendarDate").textContent=selectedDate.toLocaleDateString("ja-JP",{year:"numeric",month:"long",day:"numeric",weekday:"short"});
   const key=dateKeyLocal(selectedDate);
   const list=events.map(e=>({e,p:jstParts(toUtcDate(e)),d:toUtcDate(e)}))
-    .filter(x=>x.p.date===key&&(activeFilter==="all"||x.e.type===activeFilter))
+    .filter(x=>
+      x.p.date===key &&
+      passesImportanceFilter(x.e) &&
+      (activeFilter==="all"||x.e.type===activeFilter)
+    )
     .sort((a,b)=>a.d-b.d);
   const wrap=document.getElementById("calendarEvents");
   if(!list.length){wrap.innerHTML='<div class="empty">この日の予定はありません</div>';return}
@@ -1085,6 +1181,27 @@ document.getElementById("nextDay").addEventListener("click",()=>{selectedDate.se
 document.getElementById("todayBtn").addEventListener("click",()=>{selectedDate=new Date();renderCalendar()});
 document.getElementById("refreshData").addEventListener("click",loadData);
 
+
+
+const importanceButtons=[...document.querySelectorAll(".importance-btn")];
+
+function applyImportanceFilter(level){
+  const min=Math.min(3,Math.max(1,Number(level)||1));
+  localStorage.setItem("fxsignal_min_importance",String(min));
+  importanceButtons.forEach(btn=>{
+    btn.classList.toggle("active",Number(btn.dataset.minImportance)===min);
+  });
+  if(events.length){
+    renderHome();
+    renderCalendar();
+  }
+}
+
+importanceButtons.forEach(btn=>{
+  btn.addEventListener("click",()=>applyImportanceFilter(btn.dataset.minImportance));
+});
+
+applyImportanceFilter(getMinImportance());
 
 const viewModeButtons=[...document.querySelectorAll(".view-mode-btn")];
 
