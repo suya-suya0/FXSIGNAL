@@ -941,10 +941,35 @@ function indicatorInfoFor(e){
   };
 }
 
+function stripCountryPrefix(title,country){
+  let t=String(title||"").trim();
+  const c=String(country||"").toUpperCase();
+
+  if(c==="US"){
+    t=t.replace(/^(US|USA|United States)\s+/i,"");
+  }else if(c==="JP"){
+    t=t.replace(/^(JP|Japan|日本)\s+/i,"");
+  }else if(c==="GB"){
+    t=t.replace(/^(UK|GB|United Kingdom|英国)\s+/i,"");
+  }else if(c==="EU"){
+    t=t.replace(/^(EU|Eurozone|Euro Area|ユーロ圏)\s+/i,"");
+  }else if(c==="AU"){
+    t=t.replace(/^(AU|Australia|豪州)\s+/i,"");
+  }else if(c==="CA"){
+    t=t.replace(/^(CA|Canada|カナダ)\s+/i,"");
+  }else if(c==="NZ"){
+    t=t.replace(/^(NZ|New Zealand|ニュージーランド)\s+/i,"");
+  }else if(c==="CH"){
+    t=t.replace(/^(CH|Switzerland|スイス)\s+/i,"");
+  }
+  return t.trim();
+}
+
 function eventDisplayName(e){
   const info=indicatorInfoFor(e);
-  const title=info.ja || cleanDisplayTitle(e.title,e.country);
-  return `${titleAlreadyHasCountry(title,e.country)?"":countryFlag(e.country)+" "}${title}`;
+  const rawTitle=info.ja || cleanDisplayTitle(e.title,e.country);
+  const title=stripCountryPrefix(rawTitle,e.country);
+  return `${countryFlag(e.country)} ${title}`;
 }
 
 function typePrefix(t){
@@ -1227,8 +1252,13 @@ function openEventModal(e){
   document.getElementById("eventModalHowTo").textContent=info.how;
   document.getElementById("eventModalFx").textContent=info.fx;
 
+  const countryNames={
+    US:"米国",JP:"日本",GB:"英国",EU:"ユーロ圏",
+    AU:"豪州",CA:"カナダ",NZ:"ニュージーランド",CH:"スイス"
+  };
+
   document.getElementById("eventModalMeta").innerHTML=[
-    `${countryFlag(e.country)} ${e.country || "—"}`,
+    `${countryFlag(e.country)} ${countryNames[e.country] || e.country || "—"}`,
     `${p.date} ${p.time}`,
     `重要度 ${importanceStars(e)}`,
     typeLabel(e.type)
@@ -1250,6 +1280,20 @@ function closeEventModal(){
 }
 
 document.addEventListener("click",e=>{
+  // Close button always works, even though the modal markup is parsed after this script.
+  if(e.target.closest?.("#eventModalClose")){
+    e.preventDefault();
+    e.stopPropagation();
+    closeEventModal();
+    return;
+  }
+
+  // Clicking the dark backdrop also closes the modal.
+  if(e.target?.id==="eventModalBackdrop"){
+    closeEventModal();
+    return;
+  }
+
   const row=e.target.closest?.("[data-event-key]");
   if(row){
     openEventModal(eventByKey(row.dataset.eventKey));
@@ -1262,11 +1306,6 @@ document.addEventListener("keydown",e=>{
     openEventModal(eventByKey(e.target.dataset.eventKey));
   }
   if(e.key==="Escape") closeEventModal();
-});
-
-document.getElementById("eventModalClose")?.addEventListener("click",closeEventModal);
-document.getElementById("eventModalBackdrop")?.addEventListener("click",e=>{
-  if(e.target.id==="eventModalBackdrop") closeEventModal();
 });
 
 function renderHome(){
