@@ -866,6 +866,55 @@ body.force-desktop{
   .notification-toast strong{font-size:15px}
 }
 
+
+.app-update-banner{
+  position:fixed;
+  left:50%;
+  top:max(10px,env(safe-area-inset-top));
+  transform:translateX(-50%);
+  z-index:300;
+  width:min(560px,calc(100vw - 20px));
+  background:#101a2a;
+  border:1px solid #5b7dab;
+  border-radius:16px;
+  padding:12px 14px;
+  box-shadow:0 18px 60px rgba(0,0,0,.5);
+}
+.app-update-banner.hidden{display:none}
+.app-update-row{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  justify-content:space-between;
+}
+.app-update-text strong{
+  display:block;
+  font-size:14px;
+}
+.app-update-text span{
+  display:block;
+  margin-top:3px;
+  color:#aebfd4;
+  font-size:12px;
+}
+.app-update-actions{
+  display:flex;
+  gap:8px;
+  flex:0 0 auto;
+}
+@media(max-width:560px){
+  .app-update-row{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+  .app-update-actions{
+    width:100%;
+  }
+  .app-update-actions button{
+    flex:1;
+  }
+}
+
 </style>
 
 <link rel="manifest" href="./manifest.json">
@@ -3009,6 +3058,51 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
+
+let fxSignalRegistration = null;
+let fxSignalRefreshing = false;
+
+function showAppUpdateBanner(){
+  document.getElementById("appUpdateBanner")?.classList.remove("hidden");
+}
+
+function hideAppUpdateBanner(){
+  document.getElementById("appUpdateBanner")?.classList.add("hidden");
+}
+
+async function applyAppUpdate(){
+  const reg=fxSignalRegistration || await navigator.serviceWorker?.getRegistration?.();
+  const waiting=reg?.waiting;
+
+  if(waiting){
+    waiting.postMessage({type:"SKIP_WAITING"});
+    return;
+  }
+
+  // If the new worker is still installing, ask the browser to check again.
+  try{
+    await reg?.update?.();
+  }catch{}
+
+  if(reg?.waiting){
+    reg.waiting.postMessage({type:"SKIP_WAITING"});
+  }else{
+    // Fallback: hard reload and bypass stale page cache as much as possible.
+    location.reload();
+  }
+}
+
+document.getElementById("applyAppUpdateBtn")?.addEventListener("click",applyAppUpdate);
+document.getElementById("dismissAppUpdateBtn")?.addEventListener("click",hideAppUpdateBanner);
+
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{
+    if(fxSignalRefreshing) return;
+    fxSignalRefreshing=true;
+    location.reload();
+  });
+}
+
 let deferredInstallPrompt = null;
 
 function updatePwaInstallUi(){
@@ -3066,10 +3160,33 @@ document.getElementById("pwaInstallBtn")?.addEventListener("click",async()=>{
 });
 
 if("serviceWorker" in navigator){
-  window.addEventListener("load",()=>{
-    navigator.serviceWorker.register("./service-worker.js")
-      .then(()=>{})
-      .catch(err=>console.warn("Service Worker registration failed:",err));
+  window.addEventListener("load",async()=>{
+    try{
+      const reg=await navigator.serviceWorker.register("./service-worker.js");
+      fxSignalRegistration=reg;
+
+      // Existing update already waiting.
+      if(reg.waiting && navigator.serviceWorker.controller){
+        showAppUpdateBanner();
+      }
+
+      // Detect a newly installed worker.
+      reg.addEventListener("updatefound",()=>{
+        const worker=reg.installing;
+        if(!worker) return;
+
+        worker.addEventListener("statechange",()=>{
+          if(worker.state==="installed" && navigator.serviceWorker.controller){
+            showAppUpdateBanner();
+          }
+        });
+      });
+
+      // Ask for an update check whenever the app opens.
+      try{ await reg.update(); }catch{}
+    }catch(err){
+      console.warn("Service Worker registration failed:",err);
+    }
   });
 }
 
@@ -3078,6 +3195,20 @@ updatePwaInstallUi();
 </script>
 
 
+
+
+<div id="appUpdateBanner" class="app-update-banner hidden" role="status" aria-live="polite">
+  <div class="app-update-row">
+    <div class="app-update-text">
+      <strong>新しいバージョンがあります</strong>
+      <span>最新版に更新できます</span>
+    </div>
+    <div class="app-update-actions">
+      <button id="applyAppUpdateBtn" class="mini primary" type="button">更新する</button>
+      <button id="dismissAppUpdateBtn" class="mini" type="button">あとで</button>
+    </div>
+  </div>
+</div>
 
 <div id="notificationToast" class="notification-toast hidden" role="status" aria-live="polite">
   <div class="notification-toast-head">

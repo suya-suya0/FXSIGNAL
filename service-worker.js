@@ -1,4 +1,4 @@
-const CACHE_NAME = "fx-signal-v1";
+const CACHE_NAME = "fx-signal-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -56,4 +56,11 @@ self.addEventListener("fetch", event => {
       return cached || network;
     })
   );
+});
+
+
+self.addEventListener("message", event => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
