@@ -922,6 +922,7 @@ body.force-desktop{
           <button class="filter" data-filter="central_bank">🏛 中央銀行</button>
           <button class="filter" data-filter="speech">🎙 要人発言</button>
         </div>
+        <div id="calendarImportanceStatus" class="note" style="margin-bottom:12px"></div>
         <div id="calendarEvents" class="calendar-events"></div>
       </div>
       <div class="card">
@@ -1559,9 +1560,13 @@ function getMinImportance(){
 }
 
 function passesImportanceFilter(e){
-  // Policy-rate / central-bank / speeches are always shown.
+  // Importance filter applies to economic indicators only.
+  // Policy-rate / central-bank / speeches remain visible as separate event classes.
   if(e.type==="rate" || e.type==="central_bank" || e.type==="speech") return true;
-  return correctedClientImportance(e) >= getMinImportance();
+
+  const level=correctedClientImportance(e);
+  const min=getMinImportance();
+  return level >= min;
 }
 
 function barClass(e){
@@ -1996,6 +2001,20 @@ function renderHome(){
 function dateKeyLocal(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
 
 
+
+function importanceFilterLabel(){
+  const min=getMinImportance();
+  if(min===3) return "経済指標：★★★ 重要度3のみ表示";
+  if(min===2) return "経済指標：★★☆以上（重要度2〜3）を表示";
+  return "経済指標：★☆☆以上（重要度1〜3）を表示";
+}
+
+function updateCalendarImportanceStatus(){
+  const el=document.getElementById("calendarImportanceStatus");
+  if(!el) return;
+  el.textContent=importanceFilterLabel() + " ／ 政策金利・中央銀行関連・要人発言は別枠で表示";
+}
+
 function eventsForDateKey(key){
   return events
     .map(e=>({e,p:jstParts(toUtcDate(e)),d:toUtcDate(e)}))
@@ -2032,7 +2051,7 @@ function openDayPopup(dateObj){
 
   const wrap=document.getElementById("dayPopupList");
   if(!list.length){
-    wrap.innerHTML='<div class="empty">この日の予定はありません</div>';
+    wrap.innerHTML=`<div class="empty">この日の表示対象の予定はありません<br><span style="font-size:11px">${escapeHtml(importanceFilterLabel())}</span></div>`;
   }else{
     wrap.innerHTML=list.map(x=>`
       <div class="event event-clickable ${x.e.type==="rate"?"rate":""}" ${eventClickableAttrs(x.e)}>
@@ -2152,6 +2171,7 @@ function updateTodayButton(){
 
 function renderCalendar(){
   updateTodayButton();
+  updateCalendarImportanceStatus();
 
   const wrap=document.getElementById("calendarEvents");
 
@@ -2699,12 +2719,20 @@ const importanceButtons=[...document.querySelectorAll(".importance-btn")];
 function applyImportanceFilter(level){
   const min=Math.min(3,Math.max(1,Number(level)||1));
   localStorage.setItem("fxsignal_min_importance",String(min));
+
   importanceButtons.forEach(btn=>{
     btn.classList.toggle("active",Number(btn.dataset.minImportance)===min);
   });
+
+  // Close an already-open day popup so it can't keep showing rows
+  // from the previous importance setting.
+  closeDayPopup();
+
   if(events.length){
     renderHome();
     renderCalendar();
+  }else{
+    updateCalendarImportanceStatus();
   }
 }
 
