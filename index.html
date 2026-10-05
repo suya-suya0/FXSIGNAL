@@ -552,6 +552,23 @@ body.force-desktop{
   .event-values{grid-template-columns:1fr}
 }
 
+
+.country-flag{
+  display:inline-block;
+  width:22px;
+  height:15px;
+  object-fit:cover;
+  border-radius:3px;
+  box-shadow:0 0 0 1px rgba(255,255,255,.16);
+  vertical-align:-2px;
+  margin-right:7px;
+}
+.country-name{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+}
+
 </style>
 </head>
 <body>
@@ -658,7 +675,7 @@ body.force-desktop{
         <h3>この先7日間の注目予定</h3>
         <div class="hero-grid">
           <div class="hero">
-            <div class="eyebrow">次の重要指標</div>
+            <div class="eyebrow">次の重要指標（重要度優先）</div>
             <div class="hero-top">
               <div><h4 id="indicatorTitle">読み込み中...</h4><div id="indicatorTime" class="event-time">--:--</div></div>
               <div id="indicatorImportance" class="hero-importance"></div>
@@ -808,7 +825,37 @@ function jstParts(date){
   return {date:`${o.year}-${o.month}-${o.day}`,time:`${o.hour}:${o.minute}`};
 }
 function todayJst(){return jstParts(new Date()).date}
-function countryFlag(c){return flagMap[(c||"").toUpperCase()]||"🌐"}
+function countryFlag(c){
+  return flagMap[(c||"").toUpperCase()]||"🌐";
+}
+
+function flagCode(country){
+  const c=String(country||"").toUpperCase();
+  const map={
+    US:"us",JP:"jp",GB:"gb",EU:"eu",
+    AU:"au",CA:"ca",NZ:"nz",CH:"ch"
+  };
+  return map[c] || "";
+}
+
+function countryNameJa(country){
+  const c=String(country||"").toUpperCase();
+  const map={
+    US:"米国",JP:"日本",GB:"英国",EU:"ユーロ圏",
+    AU:"豪州",CA:"カナダ",NZ:"ニュージーランド",CH:"スイス"
+  };
+  return map[c] || c || "その他";
+}
+
+function flagImgHtml(country){
+  const code=flagCode(country);
+  if(!code) return "";
+  return `<img class="country-flag" src="https://flagcdn.com/${code}.svg" alt="${escapeHtml(countryNameJa(country))}国旗">`;
+}
+
+function eventDisplayHtml(e){
+  return `${flagImgHtml(e.country)}<span>${escapeHtml(stripCountryPrefix(indicatorInfoFor(e).ja || cleanDisplayTitle(e.title,e.country),e.country))}</span>`;
+}
 
 function cleanDisplayTitle(title,country){
   let t=String(title||"").trim();
@@ -968,8 +1015,7 @@ function stripCountryPrefix(title,country){
 function eventDisplayName(e){
   const info=indicatorInfoFor(e);
   const rawTitle=info.ja || cleanDisplayTitle(e.title,e.country);
-  const title=stripCountryPrefix(rawTitle,e.country);
-  return `${countryFlag(e.country)} ${title}`;
+  return stripCountryPrefix(rawTitle,e.country);
 }
 
 function typePrefix(t){
@@ -1061,19 +1107,32 @@ function eventKey(e){
 }
 
 function renderHero(kind){
+  const maxUpcomingMs = 7*24*60*60*1000;
+
   const pool=events
     .filter(e=>kind==="rate"
       ? e.type==="rate"
-      : (e.type==="indicator" && correctedClientImportance(e) >= getMinImportance())
+      : e.type==="indicator"
     )
-    .filter(e=>kind==="rate" || eventKey(e)!==currentFocusKey)
-    .map(e=>({e,date:toUtcDate(e)}))
+    .map(e=>({e,date:toUtcDate(e),importance:correctedClientImportance(e)}))
     .filter(x=>x.date>Date.now()-5*60*1000)
-    .sort((a,b)=>a.date-b.date);
+    .filter(x=>(x.date-Date.now())<=maxUpcomingMs);
+
+  // For "next important indicator", importance outranks closeness.
+  // Within the same importance level, choose the nearest event.
+  if(kind==="indicator"){
+    pool.sort((a,b)=>{
+      if(b.importance!==a.importance) return b.importance-a.importance;
+      return a.date-b.date;
+    });
+  }else{
+    pool.sort((a,b)=>a.date-b.date);
+  }
+
   const next=pool[0];
   const prefix=kind==="rate"?"rate":"indicator";
-  const maxUpcomingMs = 7*24*60*60*1000;
-  if(!next || (next.date-Date.now()) > maxUpcomingMs){
+
+  if(!next){
     document.getElementById(prefix+"Title").textContent="予定なし";
     document.getElementById(prefix+"Time").textContent="--:--";
     if(kind==="indicator"){
@@ -1083,17 +1142,26 @@ function renderHero(kind){
     document.getElementById(prefix+"Count").textContent="今後7日以内に該当イベントはありません";
     return;
   }
+
   const p=jstParts(next.date);
-  document.getElementById(prefix+"Title").textContent=eventDisplayName(next.e);
+
+  // Use real flag image in hero title.
+  const titleEl=document.getElementById(prefix+"Title");
+  titleEl.innerHTML=eventDisplayHtml(next.e);
+
   document.getElementById(prefix+"Time").textContent=p.time;
+
   if(kind==="indicator"){
     const box=document.getElementById("indicatorImportance");
     if(box) box.innerHTML=importanceStarsHtml(next.e);
   }
+
   const details=[];
   if(next.e.forecast) details.push(`予想 ${next.e.forecast}`);
   if(next.e.previous) details.push(`前回 ${next.e.previous}`);
-  document.getElementById(prefix+"Count").innerHTML=`<b>${formatCountdown(next.date)}</b>${details.length?"　"+details.join(" / "):""}`;
+
+  document.getElementById(prefix+"Count").innerHTML=
+    `<b>${formatCountdown(next.date)}</b>${details.length?"　"+details.join(" / "):""}`;
 }
 
 
@@ -1195,8 +1263,8 @@ function renderFocus(){
   }
 
   const p=jstParts(pick.date);
-  document.getElementById("focusTitle").textContent=
-    `${typePrefix(pick.e.type)}${eventDisplayName(pick.e)}`;
+  document.getElementById("focusTitle").innerHTML=
+    `${typePrefix(pick.e.type)}${eventDisplayHtml(pick.e)}`;
   document.getElementById("focusTime").textContent=p.time;
   document.getElementById("focusMeta").textContent=
     `${formatCountdown(pick.date)} ・ ${typeLabel(pick.e.type)} ・ 重要度 ${correctedClientImportance(pick.e)}`;
@@ -1252,17 +1320,13 @@ function openEventModal(e){
   document.getElementById("eventModalHowTo").textContent=info.how;
   document.getElementById("eventModalFx").textContent=info.fx;
 
-  const countryNames={
-    US:"米国",JP:"日本",GB:"英国",EU:"ユーロ圏",
-    AU:"豪州",CA:"カナダ",NZ:"ニュージーランド",CH:"スイス"
-  };
-
-  document.getElementById("eventModalMeta").innerHTML=[
-    `${countryFlag(e.country)} ${countryNames[e.country] || e.country || "—"}`,
-    `${p.date} ${p.time}`,
-    `重要度 ${importanceStars(e)}`,
-    typeLabel(e.type)
-  ].map(x=>`<span class="event-modal-pill">${escapeHtml(x)}</span>`).join("");
+  document.getElementById("eventModalMeta").innerHTML=
+    `<span class="event-modal-pill country-name">${flagImgHtml(e.country)}${escapeHtml(countryNameJa(e.country))}</span>` +
+    [
+      `${p.date} ${p.time}`,
+      `重要度 ${importanceStars(e)}`,
+      typeLabel(e.type)
+    ].map(x=>`<span class="event-modal-pill">${escapeHtml(x)}</span>`).join("");
 
   document.getElementById("eventModalValues").innerHTML=`
     <div class="event-value"><span>結果</span><b>${escapeHtml(e.actual || "未発表")}</b></div>
@@ -1328,7 +1392,7 @@ function renderHome(){
       const vals=[e.actual?`結果 ${escapeHtml(e.actual)}`:"",e.forecast?`予想 ${escapeHtml(e.forecast)}`:"",e.previous?`前回 ${escapeHtml(e.previous)}`:""].filter(Boolean).join(" / ");
       return `<div class="event event-clickable ${e.type==="rate"?"rate":""}" ${eventClickableAttrs(e)}>
         <div class="when">${x.p.time}</div>
-        <div><div class="title">${typePrefix(e.type)}${escapeHtml(eventDisplayName(e))}</div>
+        <div><div class="title">${typePrefix(e.type)}${eventDisplayHtml(e)}</div>
         <div class="desc">${vals||'<span class="beginner-only">詳細値は発表後に更新されます</span>'}</div>
         <div class="event-help">クリックで指標の説明を見る</div></div>
         ${importanceStarsHtml(e)}</div>`;
@@ -1367,7 +1431,7 @@ function renderCalendar(){
   if(!list.length){wrap.innerHTML='<div class="empty">この日の予定はありません</div>';return}
   wrap.innerHTML=list.map(x=>`<div class="event event-clickable ${x.e.type==="rate"?"rate":""}" ${eventClickableAttrs(x.e)}>
     <div class="when">${x.p.time}</div>
-    <div><div class="title">${typePrefix(x.e.type)}${escapeHtml(eventDisplayName(x.e))}</div>
+    <div><div class="title">${typePrefix(x.e.type)}${eventDisplayHtml(x.e)}</div>
     <div class="desc">重要度 ${importanceStars(x.e)}${x.e.actual?` / 結果 ${escapeHtml(x.e.actual)}`:""}${x.e.forecast?` / 予想 ${escapeHtml(x.e.forecast)}`:""}</div>
     <div class="event-help">クリックで指標の説明を見る</div></div>
     ${importanceStarsHtml(x.e)}</div>`).join("");
