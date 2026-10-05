@@ -3059,9 +3059,29 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
 
-const FX_SIGNAL_APP_VERSION="2026.10.05-v4.1";
+const FX_SIGNAL_APP_VERSION="2026.10.05-v5";
 let fxSignalRegistration = null;
 let fxSignalRefreshing = false;
+
+let fxSignalUpdateWorker = null;
+
+function hasRealWaitingUpdate(reg){
+  return !!(reg && reg.waiting && navigator.serviceWorker.controller);
+}
+
+function syncUpdateBanner(reg){
+  const hasUpdate=hasRealWaitingUpdate(reg);
+  fxSignalUpdateWorker=hasUpdate ? reg.waiting : null;
+
+  if(hasUpdate){
+    const status=document.getElementById("appUpdateStatus");
+    if(status) status.textContent="最新版の準備ができました";
+    showAppUpdateBanner();
+  }else{
+    hideAppUpdateBanner();
+  }
+}
+
 
 function showAppUpdateBanner(){
   document.getElementById("appUpdateBanner")?.classList.remove("hidden");
@@ -3079,79 +3099,37 @@ async function applyAppUpdate(){
     btn.disabled=true;
     btn.textContent="更新中…";
   }
-  if(status) status.textContent="最新版を準備しています…";
+  if(status) status.textContent="最新版を確認しています…";
 
   try{
-    if(!("serviceWorker" in navigator)){
-      throw new Error("service worker unsupported");
-    }
+    if(!("serviceWorker" in navigator)) throw new Error("unsupported");
 
     const reg=fxSignalRegistration || await navigator.serviceWorker.getRegistration();
-    if(!reg){
-      throw new Error("registration not found");
-    }
+    if(!reg) throw new Error("registration missing");
     fxSignalRegistration=reg;
 
-    const activateWaiting=worker=>{
-      if(!worker) return false;
+    // Always refresh registration state first.
+    try{ await reg.update(); }catch{}
+
+    const waiting=reg.waiting || fxSignalUpdateWorker;
+
+    if(waiting){
+      fxSignalUpdateWorker=waiting;
       if(status) status.textContent="更新を適用しています…";
-      worker.postMessage({type:"SKIP_WAITING"});
-      return true;
-    };
-
-    // Best case: a new version is already waiting.
-    if(activateWaiting(reg.waiting)) return;
-
-    // Ask browser to check the server right now.
-    await reg.update();
-
-    if(activateWaiting(reg.waiting)) return;
-
-    // If an update is installing, wait until it becomes installed/waiting.
-    const installing=reg.installing;
-    if(installing){
-      if(status) status.textContent="ダウンロード完了を待っています…";
-
-      await new Promise((resolve,reject)=>{
-        const timer=setTimeout(()=>reject(new Error("install timeout")),15000);
-
-        const done=()=>{
-          clearTimeout(timer);
-          resolve();
-        };
-
-        installing.addEventListener("statechange",()=>{
-          if(installing.state==="installed" || installing.state==="activated"){
-            done();
-          }else if(installing.state==="redundant"){
-            clearTimeout(timer);
-            reject(new Error("worker redundant"));
-          }
-        });
-
-        if(installing.state==="installed" || installing.state==="activated"){
-          done();
-        }
-      });
-
-      if(activateWaiting(reg.waiting)) return;
-
-      // Some browsers may activate directly.
-      if(installing.state==="activated"){
-        if(status) status.textContent="更新完了。再読み込みします…";
-        location.reload();
-        return;
-      }
+      waiting.postMessage({type:"SKIP_WAITING"});
+      return;
     }
 
-    // No waiting/installing worker usually means the browser already has
-    // the newest service worker. Reload once using the newest network HTML.
-    if(status) status.textContent="最新版を読み込み直します…";
-    setTimeout(()=>location.reload(),300);
-
+    // No real waiting update means the banner is stale.
+    hideAppUpdateBanner();
+    if(status) status.textContent="すでに最新版です";
+    if(btn){
+      btn.disabled=false;
+      btn.textContent="更新する";
+    }
   }catch(err){
     console.warn("App update failed:",err);
-    if(status) status.textContent="更新に失敗しました。アプリを一度閉じて開き直してください。";
+    if(status) status.textContent="更新状態を確認できませんでした";
     if(btn){
       btn.disabled=false;
       btn.textContent="もう一度更新";
@@ -3166,9 +3144,10 @@ if("serviceWorker" in navigator){
   navigator.serviceWorker.addEventListener("controllerchange",()=>{
     if(fxSignalRefreshing) return;
     fxSignalRefreshing=true;
+    hideAppUpdateBanner();
     const status=document.getElementById("appUpdateStatus");
     if(status) status.textContent="更新完了。最新版を開きます…";
-    setTimeout(()=>location.reload(),250);
+    setTimeout(()=>location.reload(),300);
   });
 }
 
@@ -3177,13 +3156,10 @@ document.addEventListener("visibilitychange",async()=>{
   if(document.visibilityState!=="visible" || !("serviceWorker" in navigator)) return;
   try{
     const reg=fxSignalRegistration || await navigator.serviceWorker.getRegistration();
-    if(reg){
-      fxSignalRegistration=reg;
-      await reg.update();
-      if(reg.waiting && navigator.serviceWorker.controller){
-        showAppUpdateBanner();
-      }
-    }
+    if(!reg) return;
+    fxSignalRegistration=reg;
+    try{ await reg.update(); }catch{}
+    syncUpdateBanner(reg);
   }catch{}
 });
 
@@ -3249,29 +3225,32 @@ if("serviceWorker" in navigator){
       const reg=await navigator.serviceWorker.register("./service-worker.js");
       fxSignalRegistration=reg;
 
-      // Existing update already waiting.
-      if(reg.waiting && navigator.serviceWorker.controller){
-        showAppUpdateBanner();
-      }
+      // Clear stale UI first, then inspect actual worker state.
+      syncUpdateBanner(reg);
 
-      // Detect a newly installed worker.
       reg.addEventListener("updatefound",()=>{
         const worker=reg.installing;
         if(!worker) return;
 
         worker.addEventListener("statechange",()=>{
-          if(worker.state==="installed" && navigator.serviceWorker.controller){
-            const status=document.getElementById("appUpdateStatus");
-            if(status) status.textContent="最新版の準備ができました";
-            showAppUpdateBanner();
+          if(worker.state==="installed"){
+            syncUpdateBanner(reg);
           }
         });
       });
 
-      // Ask for an update check whenever the app opens.
-      try{ await reg.update(); }catch{}
+      try{
+        await reg.update();
+      }catch{}
+
+      // Re-check after update() completes.
+      syncUpdateBanner(reg);
+
+      // Also check shortly after load because some mobile browsers settle state asynchronously.
+      setTimeout(()=>syncUpdateBanner(reg),1200);
     }catch(err){
       console.warn("Service Worker registration failed:",err);
+      hideAppUpdateBanner();
     }
   });
 }
