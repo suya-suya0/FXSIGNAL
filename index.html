@@ -456,7 +456,7 @@ body.force-desktop{
 .event-modal-backdrop{
   position:fixed;
   inset:0;
-  z-index:100;
+  z-index:120;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -1151,6 +1151,81 @@ const indicatorKnowledge = [
   }
 ];
 
+
+function localizeEventTitle(title, country="", type="indicator"){
+  const raw=String(title||"").trim();
+  const s=raw.toLowerCase();
+
+  const exact = new Map([
+    ["opening remarks","冒頭挨拶"],
+    ["economic conditions and monetary policy","経済情勢と金融政策についての発言"],
+    ["the u.s. economy and monetary policy","米国経済と金融政策についての発言"],
+    ["payments in the age of ai agents","AIエージェント時代の決済についての発言"],
+    ["the dual mandate in rural america","地方経済におけるFRBの二大責務についての発言"],
+    ["the data version of godzilla versus kong: fred takes on ai","FREDとAI活用についての講演"],
+    ["modernizing financial regulation: initial observations from eslr","金融規制の近代化についての発言"],
+    ["an update on ai and the economy","AIと経済の最新動向についての発言"]
+  ]);
+
+  if(exact.has(s)) return exact.get(s);
+
+  // Central-bank speech patterns
+  let m=raw.match(/^ECB'?s?\s+(.+?)\s+speech$/i);
+  if(m) return `ECB ${m[1]}氏 発言`;
+
+  m=raw.match(/^Fed'?s?\s+(.+?)\s+speech$/i);
+  if(m) return `FRB ${m[1]}氏 発言`;
+
+  m=raw.match(/^BOE'?s?\s+(.+?)\s+speech$/i);
+  if(m) return `BOE ${m[1]}氏 発言`;
+
+  m=raw.match(/^BOJ'?s?\s+(.+?)\s+speech$/i);
+  if(m) return `日銀 ${m[1]}氏 発言`;
+
+  m=raw.match(/^(.+?)\s+speech$/i);
+  if(m) return `${m[1]}氏 発言`;
+
+  // Common English event suffixes / phrases
+  let t=raw
+    .replace(/\bOpening Remarks\b/gi,"冒頭挨拶")
+    .replace(/\bClosing Remarks\b/gi,"閉会挨拶")
+    .replace(/\bPress Conference\b/gi,"記者会見")
+    .replace(/\bMonetary Policy Report\b/gi,"金融政策報告")
+    .replace(/\bMonetary Policy\b/gi,"金融政策")
+    .replace(/\bEconomic Outlook\b/gi,"経済見通し")
+    .replace(/\bEconomic Conditions\b/gi,"経済情勢")
+    .replace(/\bFinancial Stability\b/gi,"金融安定")
+    .replace(/\bInflation\b/gi,"インフレ")
+    .replace(/\bLabor Market\b/gi,"労働市場")
+    .replace(/\bLabour Market\b/gi,"労働市場")
+    .replace(/\bU\.S\. Economy\b/gi,"米国経済")
+    .replace(/\bUS Economy\b/gi,"米国経済");
+
+  if(t!==raw){
+    if(type==="speech" && !/発言|講演|挨拶|会見/.test(t)){
+      t += "についての発言";
+    }
+    return t;
+  }
+
+  // Fallbacks for speech-like events
+  if(type==="speech"){
+    if(/remarks/i.test(raw)){
+      return raw.replace(/remarks/ig,"発言");
+    }
+    if(/testimony/i.test(raw)){
+      return raw.replace(/testimony/ig,"議会証言");
+    }
+    return `${raw}（要人発言）`;
+  }
+
+  if(type==="central_bank"){
+    return `${raw}（中央銀行関連）`;
+  }
+
+  return raw;
+}
+
 function indicatorInfoFor(e){
   const raw=cleanDisplayTitle(e.title,e.country);
   const s=raw.toLowerCase();
@@ -1169,10 +1244,25 @@ function indicatorInfoFor(e){
   }
 
   return {
-    ja:raw.replace(/\bOctober 2026\b/i,"").trim(),
-    desc:"経済や金融市場の状況を確認するために発表される経済イベントです。",
-    how:"予想値・前回値・実際の結果を比較し、市場予想からどれくらい外れたかを確認します。",
-    fx:"予想との差が大きいほど、関連する通貨の値動きが大きくなることがあります。重要度と発表時間を合わせて確認してください。"
+    ja:localizeEventTitle(
+      raw.replace(/\b(January|February|March|April|May|June|July|August|September|October|November|December) 2026\b/i,"").trim(),
+      e.country,
+      e.type
+    ),
+    desc:
+      e.type==="speech"
+        ? "中央銀行関係者や政府高官などによる発言・講演です。金融政策や景気認識について新しい手掛かりが出ることがあります。"
+        : e.type==="central_bank"
+        ? "中央銀行に関連する会合・議事要旨・報告などのイベントです。今後の金融政策を読む材料になります。"
+        : "経済や金融市場の状況を確認するために発表される経済イベントです。",
+    how:
+      e.type==="speech"
+        ? "金利・インフレ・景気について、従来より強気か慎重かなどの表現に注目します。"
+        : "予想値・前回値・実際の結果を比較し、市場予想からどれくらい外れたかを確認します。",
+    fx:
+      e.type==="speech"
+        ? "予想外にタカ派・ハト派な内容が出ると、対象通貨や金利が急に動くことがあります。"
+        : "予想との差が大きいほど、関連する通貨の値動きが大きくなることがあります。重要度と発表時間を合わせて確認してください。"
   };
 }
 
@@ -1345,19 +1435,13 @@ function formatCountdown(date){
   return `あと ${m}分`;
 }
 
-let currentFocusKey = null;
-
-function eventKey(e){
-  return e.source_id || `${e.date}|${e.time}|${e.country}|${e.title}`;
-}
-
 function renderHero(kind){
   const maxUpcomingMs = 7*24*60*60*1000;
 
   const pool=events
     .filter(e=>kind==="rate"
       ? e.type==="rate"
-      : e.type==="indicator"
+      : (e.type==="indicator" && passesImportanceFilter(e))
     )
     .map(e=>({e,date:toUtcDate(e),importance:correctedClientImportance(e)}))
     .filter(x=>x.date>Date.now()-5*60*1000)
@@ -1498,7 +1582,6 @@ function renderFocus(){
 
   const pick = major24[0] || importantFuture[0] || within24h[0] || future[0];
 
-  currentFocusKey = pick ? eventKey(pick.e) : null;
 
   if(!pick){
     document.getElementById("focusTitle").textContent="大きな注目イベントなし";
@@ -1585,7 +1668,8 @@ function openEventModal(e){
 
 function closeEventModal(){
   document.getElementById("eventModalBackdrop")?.classList.add("hidden");
-  document.body.style.overflow="";
+  const dayPopupOpen=!document.getElementById("dayPopupBackdrop")?.classList.contains("hidden");
+  if(!dayPopupOpen) document.body.style.overflow="";
 }
 
 document.addEventListener("click",e=>{
@@ -1732,7 +1816,8 @@ function openDayPopup(dateObj){
 
 function closeDayPopup(){
   document.getElementById("dayPopupBackdrop")?.classList.add("hidden");
-  document.body.style.overflow="";
+  const eventModalOpen=!document.getElementById("eventModalBackdrop")?.classList.contains("hidden");
+  if(!eventModalOpen) document.body.style.overflow="";
 }
 
 function renderWeekCalendar(){
@@ -2062,12 +2147,14 @@ document.getElementById("calendarEvents")?.addEventListener("click",e=>{
 
   const [y,m,d]=day.dataset.calendarDate.split("-").map(Number);
   selectedDate=new Date(y,m-1,d);
+  renderCalendar();
   openDayPopup(selectedDate);
 });
 
 document.querySelectorAll(".filter").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".filter").forEach(x=>x.classList.remove("active"));b.classList.add("active");activeFilter=b.dataset.filter;renderCalendar()}));
 document.getElementById("prevDay").addEventListener("click",()=>{
   if(calendarView==="month"){
+    selectedDate.setDate(1);
     selectedDate.setMonth(selectedDate.getMonth()-1);
   }else if(calendarView==="week"){
     selectedDate.setDate(selectedDate.getDate()-7);
@@ -2078,6 +2165,7 @@ document.getElementById("prevDay").addEventListener("click",()=>{
 });
 document.getElementById("nextDay").addEventListener("click",()=>{
   if(calendarView==="month"){
+    selectedDate.setDate(1);
     selectedDate.setMonth(selectedDate.getMonth()+1);
   }else if(calendarView==="week"){
     selectedDate.setDate(selectedDate.getDate()+7);
