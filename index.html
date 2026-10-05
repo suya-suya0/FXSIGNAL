@@ -283,6 +283,16 @@ body.force-desktop{
   overflow-x:auto;
 }
 
+
+.source-note{
+  margin:-8px 0 16px;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.5;
+}
+.sidebar-foot a{color:#9fc1ef;text-decoration:none}
+.sidebar-foot a:hover{text-decoration:underline}
+
 </style>
 </head>
 <body>
@@ -296,7 +306,7 @@ body.force-desktop{
     <button class="navbtn glossary-nav" data-target="glossary">📘 用語集</button>
     <button class="navbtn" data-target="settings">⚙️ 設定</button>
   </div>
-  <div class="sidebar-foot">Live data via Supabase</div>
+  <div class="sidebar-foot">Live data via Supabase<br>Data: <a href="https://xoomar.com" target="_blank" rel="noopener">XOOMAR</a> + <a href="https://www.financecalendar.com" target="_blank" rel="noopener">FinanceCalendar.com</a></div>
 </aside>
 
 <main class="content">
@@ -304,7 +314,7 @@ body.force-desktop{
     <div><h2>FX SIGNAL</h2><div class="sub">今日の市場状況と重要イベント</div></div>
     <button id="modeBadge" class="mode">初心者モード ON</button>
   </div>
-  <div id="dataStatus" class="status"><span class="dot"></span><span id="statusText">Supabaseに接続中...</span></div>
+  <div id="dataStatus" class="status"><span class="dot"></span><span id="statusText">Supabaseに接続中...</span></div><div class="source-note">予定データは XOOMAR と FinanceCalendar.com を併用。片方にない指標をもう片方で補完します。</div>
 
   <section id="home">
     <div class="stack">
