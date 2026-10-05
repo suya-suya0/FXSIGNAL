@@ -3059,6 +3059,7 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
 
+const FX_SIGNAL_APP_VERSION="2026.10.05-v3";
 let fxSignalRegistration = null;
 let fxSignalRefreshing = false;
 
@@ -3102,6 +3103,21 @@ if("serviceWorker" in navigator){
     location.reload();
   });
 }
+
+
+document.addEventListener("visibilitychange",async()=>{
+  if(document.visibilityState!=="visible" || !("serviceWorker" in navigator)) return;
+  try{
+    const reg=fxSignalRegistration || await navigator.serviceWorker.getRegistration();
+    if(reg){
+      fxSignalRegistration=reg;
+      await reg.update();
+      if(reg.waiting && navigator.serviceWorker.controller){
+        showAppUpdateBanner();
+      }
+    }
+  }catch{}
+});
 
 let deferredInstallPrompt = null;
 
