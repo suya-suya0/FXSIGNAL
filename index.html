@@ -344,33 +344,11 @@ body.force-desktop{
         </div>
       </div>
 
-      <div class="hero-grid">
-        <div class="focus-card">
-          <div class="focus-title">次に見るべきイベント</div>
-          <div id="focusTitle" class="focus-event">読み込み中...</div>
-          <div id="focusTime" class="focus-time">--:--</div>
-          <div id="focusMeta" class="focus-meta">Supabaseから取得しています</div>
-        </div>
-
-        <div class="priority-stack">
-          <div id="rateHero" class="hero rate">
-            <div class="eyebrow">次の政策金利イベント</div>
-            <div class="hero-top">
-              <div><h4 id="rateTitle">読み込み中...</h4><div id="rateTime" class="event-time">--:--</div></div>
-              <div class="tag rate">🏦 金利</div>
-            </div>
-            <div id="rateCount" class="count">Supabaseから取得しています</div>
-          </div>
-
-          <div class="hero">
-            <div class="eyebrow">次の重要指標</div>
-            <div class="hero-top">
-              <div><h4 id="indicatorTitle">読み込み中...</h4><div id="indicatorTime" class="event-time">--:--</div></div>
-              <div class="tag hot">🔥 重要度3</div>
-            </div>
-            <div id="indicatorCount" class="count">Supabaseから取得しています</div>
-          </div>
-        </div>
+      <div class="focus-card">
+        <div class="focus-title">次に見るべきイベント</div>
+        <div id="focusTitle" class="focus-event">読み込み中...</div>
+        <div id="focusTime" class="focus-time">--:--</div>
+        <div id="focusMeta" class="focus-meta">Supabaseから取得しています</div>
       </div>
 
       <div class="grid">
@@ -395,6 +373,30 @@ body.force-desktop{
             <p class="calendar-help" style="margin-top:10px">
               ※「高い」は値動きが出やすい予測で、利益が出やすいという意味ではありません。
             </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-kicker">UPCOMING</div>
+        <h3>この先の注目予定</h3>
+        <div class="hero-grid">
+          <div class="hero">
+            <div class="eyebrow">次の重要指標</div>
+            <div class="hero-top">
+              <div><h4 id="indicatorTitle">読み込み中...</h4><div id="indicatorTime" class="event-time">--:--</div></div>
+              <div class="tag hot">🔥 重要度3</div>
+            </div>
+            <div id="indicatorCount" class="count">Supabaseから取得しています</div>
+          </div>
+
+          <div id="rateHero" class="hero rate">
+            <div class="eyebrow">次の政策金利イベント</div>
+            <div class="hero-top">
+              <div><h4 id="rateTitle">読み込み中...</h4><div id="rateTime" class="event-time">--:--</div></div>
+              <div class="tag rate">🏦 金利</div>
+            </div>
+            <div id="rateCount" class="count">Supabaseから取得しています</div>
           </div>
         </div>
       </div>
@@ -579,9 +581,16 @@ function formatCountdown(date){
   return `あと ${m}分`;
 }
 
+let currentFocusKey = null;
+
+function eventKey(e){
+  return e.source_id || `${e.date}|${e.time}|${e.country}|${e.title}`;
+}
+
 function renderHero(kind){
   const pool=events
     .filter(e=>kind==="rate"?e.type==="rate":(e.type==="indicator"&&isMajorFxEvent(e)))
+    .filter(e=>kind==="rate" || eventKey(e)!==currentFocusKey)
     .map(e=>({e,date:toUtcDate(e)}))
     .filter(x=>x.date>Date.now()-5*60*1000)
     .sort((a,b)=>a.date-b.date);
@@ -691,6 +700,8 @@ function renderFocus(){
 
   const pick = major24[0] || importantFuture[0] || within24h[0] || future[0];
 
+  currentFocusKey = pick ? eventKey(pick.e) : null;
+
   if(!pick){
     document.getElementById("focusTitle").textContent="大きな注目イベントなし";
     document.getElementById("focusTime").textContent="--:--";
@@ -730,9 +741,9 @@ function renderTodayActivity(){
 }
 
 function renderHome(){
-  renderHero("rate");
-  renderHero("indicator");
   renderFocus();
+  renderHero("indicator");
+  renderHero("rate");
   renderTodayActivity();
   renderWeekActivity();
 
@@ -754,9 +765,15 @@ function renderHome(){
 
   const high=list.filter(x=>isMajorFxEvent(x.e)||x.e.type==="rate"||x.e.type==="central_bank");
   if(high.length){
-    const first=high[0].p.time,last=high[high.length-1].p.time;
-    document.getElementById("riskTitle").textContent=`⚠️ ${first}〜${last} 重要イベントあり`;
-    document.getElementById("riskText").textContent=`今日は重要イベントが${high.length}件あります。発表前後の急変動に注意。`;
+    const times=[...new Set(high.map(x=>x.p.time))];
+    if(times.length===1){
+      document.getElementById("riskTitle").textContent=`⚠️ ${times[0]}前後に注意`;
+    } else if(times.length<=3){
+      document.getElementById("riskTitle").textContent=`⚠️ ${times.join("・")}前後に注意`;
+    } else {
+      document.getElementById("riskTitle").textContent=`⚠️ ${times[0]}〜${times[times.length-1]}に重要イベント集中`;
+    }
+    document.getElementById("riskText").textContent=`今日は重要イベントが${high.length}件あります。各発表の前後は急変動に注意。`;
   } else {
     document.getElementById("riskTitle").textContent="大きな重要イベントは少なめ";
     document.getElementById("riskText").textContent="現在取得している予定では、重要度3・政策金利イベントはありません。";
