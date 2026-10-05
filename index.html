@@ -414,6 +414,7 @@ body.force-desktop{
           <button class="filter active" data-filter="all">すべて</button>
           <button class="filter" data-filter="indicator">📊 指標</button>
           <button class="filter" data-filter="rate">🏦 金利</button>
+          <button class="filter" data-filter="central_bank">🏛 中央銀行</button>
           <button class="filter" data-filter="speech">🎙 要人発言</button>
         </div>
         <div id="calendarEvents" class="calendar-events"></div>
@@ -494,9 +495,79 @@ function jstParts(date){
 }
 function todayJst(){return jstParts(new Date()).date}
 function countryFlag(c){return flagMap[(c||"").toUpperCase()]||"🌐"}
-function typePrefix(t){return t==="rate"?"🏦 ":t==="speech"?"🎙 ":""}
-function barClass(e){return e.type==="rate"?"gold":Number(e.importance)>=3?"red":"yellow"}
-function normalize(row){return {...row,importance:Number(row.importance||2),type:row.type||"indicator",country:(row.country||"").toUpperCase()}}
+
+function cleanDisplayTitle(title,country){
+  let t=String(title||"").trim();
+  t=t.replace(/^(US|USA|United States)\s+(US|USA|United States)\s+/i,"US ");
+  t=t.replace(/^(JP|Japan)\s+(JP|Japan)\s+/i,"Japan ");
+  t=t.replace(/^(UK|GB|United Kingdom)\s+(UK|GB|United Kingdom)\s+/i,"UK ");
+  return t;
+}
+
+function titleAlreadyHasCountry(title,country){
+  const t=String(title||"").toLowerCase();
+  const c=String(country||"").toUpperCase();
+  if(c==="US") return /^(us|usa|united states)\b/.test(t);
+  if(c==="JP") return /^(jp|japan)\b/.test(t);
+  if(c==="GB") return /^(uk|gb|united kingdom)\b/.test(t);
+  return false;
+}
+
+function eventDisplayName(e){
+  const title=cleanDisplayTitle(e.title,e.country);
+  return `${titleAlreadyHasCountry(title,e.country)?"":countryFlag(e.country)+" "}${title}`;
+}
+
+function typePrefix(t){
+  return t==="rate"?"🏦 ":
+         t==="central_bank"?"🏛 ":
+         t==="speech"?"🎙 ":"";
+}
+
+function typeLabel(t){
+  return t==="rate"?"政策金利":
+         t==="central_bank"?"中央銀行関連":
+         t==="speech"?"要人発言":
+         "重要指標";
+}
+
+function isMajorFxEvent(e){
+  const s=String(e.title||"").toLowerCase();
+  if(e.type==="rate") return true;
+  if(e.type==="central_bank" && s.includes("minutes")) return true;
+  if(Number(e.importance)>=3) return true;
+  return [
+    "ism services",
+    "ism manufacturing",
+    "nonfarm payroll",
+    "non-farm payroll",
+    "employment situation",
+    "unemployment rate",
+    "consumer price index",
+    " cpi",
+    "core cpi",
+    "pce price",
+    "core pce",
+    "gross domestic product",
+    " gdp"
+  ].some(p=>s.includes(p));
+}
+
+function correctedClientImportance(e){
+  return isMajorFxEvent(e) ? 3 : Number(e.importance||2);
+}
+
+function barClass(e){
+  if(e.type==="rate") return "gold";
+  return correctedClientImportance(e)>=3?"red":"yellow";
+}
+
+function normalize(row){
+  const e={...row,type:row.type||"indicator",country:(row.country||"").toUpperCase()};
+  e.title=cleanDisplayTitle(e.title,e.country);
+  e.importance=correctedClientImportance(e);
+  return e;
+}
 
 function formatCountdown(date){
   const diff=date-Date.now();
@@ -510,7 +581,7 @@ function formatCountdown(date){
 
 function renderHero(kind){
   const pool=events
-    .filter(e=>kind==="rate"?e.type==="rate":(e.type==="indicator"&&e.importance>=3))
+    .filter(e=>kind==="rate"?e.type==="rate":(e.type==="indicator"&&isMajorFxEvent(e)))
     .map(e=>({e,date:toUtcDate(e)}))
     .filter(x=>x.date>Date.now()-5*60*1000)
     .sort((a,b)=>a.date-b.date);
@@ -523,7 +594,7 @@ function renderHero(kind){
     return;
   }
   const p=jstParts(next.date);
-  document.getElementById(prefix+"Title").textContent=`${countryFlag(next.e.country)} ${next.e.title}`;
+  document.getElementById(prefix+"Title").textContent=eventDisplayName(next.e);
   document.getElementById(prefix+"Time").textContent=p.time;
   const details=[];
   if(next.e.forecast) details.push(`予想 ${next.e.forecast}`);
@@ -543,16 +614,20 @@ function activityScoreForDate(dateKey){
   let rateCount = 0;
 
   for(const e of dayEvents){
+    const imp = correctedClientImportance(e);
     if(e.type === "rate"){
       score += 4;
       rateCount++;
+    } else if(e.type === "central_bank"){
+      score += imp >= 3 ? 3 : 2;
+      if(imp >= 3) highCount++;
     } else if(e.type === "speech"){
-      score += e.importance >= 3 ? 2.5 : 1.5;
+      score += imp >= 3 ? 2.5 : 1.5;
     } else {
-      if(e.importance >= 3){
+      if(imp >= 3){
         score += 3;
         highCount++;
-      } else if(e.importance === 2){
+      } else if(imp === 2){
         score += 1;
       } else {
         score += 0.5;
@@ -602,15 +677,19 @@ function renderFocus(){
     .filter(x=>x.date > Date.now()-5*60*1000)
     .sort((a,b)=>a.date-b.date);
 
-  // 「次に見るべき」は、まず重要イベントの中から時系列で最も近いものを選ぶ。
-  // これにより、後日の政策金利が今日のISMなどを押し出さない。
-  const important = future.filter(x =>
-    x.e.type === "rate" ||
-    (x.e.type === "indicator" && Number(x.e.importance||0) >= 3) ||
-    (x.e.type === "speech" && Number(x.e.importance||0) >= 3)
+  const within24h = future.filter(x => (x.date-Date.now()) <= 24*60*60*1000);
+
+  // First priority: major FX events within the next 24 hours, nearest first.
+  const major24 = within24h.filter(x => isMajorFxEvent(x.e));
+
+  // Second priority: any important future event, nearest first.
+  const importantFuture = future.filter(x =>
+    isMajorFxEvent(x.e) ||
+    (x.e.type==="speech" && Number(x.e.importance||0)>=3) ||
+    x.e.type==="central_bank"
   );
 
-  const pick = important[0] || future[0];
+  const pick = major24[0] || importantFuture[0] || within24h[0] || future[0];
 
   if(!pick){
     document.getElementById("focusTitle").textContent="大きな注目イベントなし";
@@ -619,17 +698,12 @@ function renderFocus(){
     return;
   }
 
-  const p = jstParts(pick.date);
-  document.getElementById("focusTitle").textContent=`${typePrefix(pick.e.type)}${countryFlag(pick.e.country)} ${pick.e.title}`;
+  const p=jstParts(pick.date);
+  document.getElementById("focusTitle").textContent=
+    `${typePrefix(pick.e.type)}${eventDisplayName(pick.e)}`;
   document.getElementById("focusTime").textContent=p.time;
-
-  const kind =
-    pick.e.type === "rate" ? "政策金利" :
-    pick.e.type === "speech" ? "要人発言" :
-    "重要指標";
-
   document.getElementById("focusMeta").textContent=
-    `${formatCountdown(pick.date)} ・ ${kind} ・ 重要度 ${pick.e.importance}`;
+    `${formatCountdown(pick.date)} ・ ${typeLabel(pick.e.type)} ・ 重要度 ${correctedClientImportance(pick.e)}`;
 }
 
 function renderTodayActivity(){
@@ -672,13 +746,13 @@ function renderHome(){
       const vals=[e.actual?`結果 ${escapeHtml(e.actual)}`:"",e.forecast?`予想 ${escapeHtml(e.forecast)}`:"",e.previous?`前回 ${escapeHtml(e.previous)}`:""].filter(Boolean).join(" / ");
       return `<div class="event ${e.type==="rate"?"rate":""}">
         <div class="when">${x.p.time}</div>
-        <div><div class="title">${typePrefix(e.type)}${countryFlag(e.country)} ${escapeHtml(e.title)}</div>
+        <div><div class="title">${typePrefix(e.type)}${escapeHtml(eventDisplayName(e))}</div>
         <div class="desc">${vals||'<span class="beginner-only">詳細値は発表後に更新されます</span>'}</div></div>
         <div class="bar ${barClass(e)}"></div></div>`;
     }).join("");
   }
 
-  const high=list.filter(x=>x.e.importance>=3||x.e.type==="rate");
+  const high=list.filter(x=>isMajorFxEvent(x.e)||x.e.type==="rate"||x.e.type==="central_bank");
   if(high.length){
     const first=high[0].p.time,last=high[high.length-1].p.time;
     document.getElementById("riskTitle").textContent=`⚠️ ${first}〜${last} 重要イベントあり`;
@@ -700,7 +774,7 @@ function renderCalendar(){
   if(!list.length){wrap.innerHTML='<div class="empty">この日の予定はありません</div>';return}
   wrap.innerHTML=list.map(x=>`<div class="event ${x.e.type==="rate"?"rate":""}">
     <div class="when">${x.p.time}</div>
-    <div><div class="title">${typePrefix(x.e.type)}${countryFlag(x.e.country)} ${escapeHtml(x.e.title)}</div>
+    <div><div class="title">${typePrefix(x.e.type)}${escapeHtml(eventDisplayName(x.e))}</div>
     <div class="desc">重要度 ${x.e.importance}${x.e.actual?` / 結果 ${escapeHtml(x.e.actual)}`:""}${x.e.forecast?` / 予想 ${escapeHtml(x.e.forecast)}`:""}</div></div>
     <div class="bar ${barClass(x.e)}"></div></div>`).join("");
 }
