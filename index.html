@@ -411,6 +411,29 @@ body.force-desktop{
   .score-guide{grid-template-columns:1fr}
 }
 
+
+.importance-stars{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:62px;
+  padding:6px 8px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.05em;
+  border:1px solid #34445f;
+  background:#121b2d;
+  white-space:nowrap;
+}
+.importance-1{color:#8fc9ff;border-color:#31547b;background:#112139}
+.importance-2{color:#ffd978;border-color:#6a5727;background:#302713}
+.importance-3{color:#ffb0b0;border-color:#7a3139;background:#3e1b21}
+.hero-importance{
+  margin-top:8px;
+  display:inline-flex;
+}
+
 </style>
 </head>
 <body>
@@ -424,7 +447,7 @@ body.force-desktop{
     <button class="navbtn glossary-nav" data-target="glossary">📘 用語集</button>
     <button class="navbtn" data-target="settings">⚙️ 設定</button>
   </div>
-  <div class="sidebar-foot">Live data via Supabase<br>Data: <a href="https://xoomar.com" target="_blank" rel="noopener">XOOMAR</a> + <a href="https://www.financecalendar.com" target="_blank" rel="noopener">FinanceCalendar.com</a></div>
+  <div class="sidebar-foot">Live data via Supabase<br>Data: <a href="https://xoomar.com" target="_blank" rel="noopener">XOOMAR</a> + <a href="https://www.financecalendar.com" target="_blank" rel="noopener">FinanceCalendar.com</a> + <a href="https://helious.io" target="_blank" rel="noopener">Helious</a></div>
 </aside>
 
 <main class="content">
@@ -432,7 +455,7 @@ body.force-desktop{
     <div><h2>FX SIGNAL</h2><div class="sub">今日の市場状況と重要イベント</div></div>
     <button id="modeBadge" class="mode">初心者モード ON</button>
   </div>
-  <div id="dataStatus" class="status"><span class="dot"></span><span id="statusText">Supabaseに接続中...</span></div><div class="source-note">予定データは XOOMAR と FinanceCalendar.com を併用。片方にない指標をもう片方で補完します。</div>
+  <div id="dataStatus" class="status"><span class="dot"></span><span id="statusText">Supabaseに接続中...</span></div><div class="source-note">予定データは XOOMAR・FinanceCalendar.com・Helious を併用し、取りこぼしを相互補完します。</div>
 
   <section id="home">
     <div class="stack">
@@ -520,7 +543,7 @@ body.force-desktop{
             <div class="eyebrow">次の重要指標</div>
             <div class="hero-top">
               <div><h4 id="indicatorTitle">読み込み中...</h4><div id="indicatorTime" class="event-time">--:--</div></div>
-              <div class="tag hot">🔥 重要度3</div>
+              <div id="indicatorImportance" class="hero-importance"></div>
             </div>
             <div id="indicatorCount" class="count">Supabaseから取得しています</div>
           </div>
@@ -730,8 +753,19 @@ function correctedClientImportance(e){
   return isMajorFxEvent(e) ? 3 : Number(e.importance||2);
 }
 
+function importanceStars(e){
+  const level=Math.min(3,Math.max(1,correctedClientImportance(e)));
+  return `${"★".repeat(level)}${"☆".repeat(3-level)}`;
+}
+
+function importanceStarsHtml(e){
+  const level=Math.min(3,Math.max(1,correctedClientImportance(e)));
+  return `<span class="importance-stars importance-${level}" title="重要度${level}">${importanceStars(e)}</span>`;
+}
+
 function getMinImportance(){
-  return Number(localStorage.getItem("fxsignal_min_importance") || 1);
+  const saved=Number(localStorage.getItem("fxsignal_min_importance"));
+  return [1,2,3].includes(saved) ? saved : 1;
 }
 
 function passesImportanceFilter(e){
@@ -784,12 +818,20 @@ function renderHero(kind){
   if(!next || (next.date-Date.now()) > maxUpcomingMs){
     document.getElementById(prefix+"Title").textContent="予定なし";
     document.getElementById(prefix+"Time").textContent="--:--";
+    if(kind==="indicator"){
+      const box=document.getElementById("indicatorImportance");
+      if(box) box.innerHTML="";
+    }
     document.getElementById(prefix+"Count").textContent="今後7日以内に該当イベントはありません";
     return;
   }
   const p=jstParts(next.date);
   document.getElementById(prefix+"Title").textContent=eventDisplayName(next.e);
   document.getElementById(prefix+"Time").textContent=p.time;
+  if(kind==="indicator"){
+    const box=document.getElementById("indicatorImportance");
+    if(box) box.innerHTML=importanceStarsHtml(next.e);
+  }
   const details=[];
   if(next.e.forecast) details.push(`予想 ${next.e.forecast}`);
   if(next.e.previous) details.push(`前回 ${next.e.previous}`);
@@ -947,7 +989,7 @@ function renderHome(){
         <div class="when">${x.p.time}</div>
         <div><div class="title">${typePrefix(e.type)}${escapeHtml(eventDisplayName(e))}</div>
         <div class="desc">${vals||'<span class="beginner-only">詳細値は発表後に更新されます</span>'}</div></div>
-        <div class="bar ${barClass(e)}"></div></div>`;
+        ${importanceStarsHtml(e)}</div>`;
     }).join("");
   }
 
@@ -985,7 +1027,7 @@ function renderCalendar(){
     <div class="when">${x.p.time}</div>
     <div><div class="title">${typePrefix(x.e.type)}${escapeHtml(eventDisplayName(x.e))}</div>
     <div class="desc">重要度 ${x.e.importance}${x.e.actual?` / 結果 ${escapeHtml(x.e.actual)}`:""}${x.e.forecast?` / 予想 ${escapeHtml(x.e.forecast)}`:""}</div></div>
-    <div class="bar ${barClass(x.e)}"></div></div>`).join("");
+    ${importanceStarsHtml(x.e)}</div>`).join("");
 }
 
 async function loadData(){
