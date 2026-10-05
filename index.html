@@ -293,6 +293,75 @@ body.force-desktop{
 .sidebar-foot a{color:#9fc1ef;text-decoration:none}
 .sidebar-foot a:hover{text-decoration:underline}
 
+
+.glossary-search{
+  width:100%;
+  padding:13px 14px;
+  border-radius:12px;
+  border:1px solid #34445f;
+  background:#0f1727;
+  color:var(--text);
+  outline:none;
+  margin:4px 0 14px;
+}
+.glossary-search:focus{border-color:#5d87c4}
+.glossary-list{display:grid;gap:10px}
+.glossary-item{
+  border:1px solid var(--line);
+  background:#101827;
+  border-radius:14px;
+  padding:14px;
+}
+.glossary-item h4{margin:0 0 6px;font-size:15px}
+.glossary-aliases{font-size:11px;color:#8fa1ba;margin-bottom:8px}
+.glossary-item p{margin:0;color:#c0cad9;font-size:13px;line-height:1.65}
+.glossary-empty{
+  padding:28px 12px;
+  border:1px dashed #33415b;
+  border-radius:14px;
+  color:var(--muted);
+  text-align:center;
+}
+.sound-panel{
+  margin-top:14px;
+  border:1px solid var(--line);
+  background:#101827;
+  border-radius:14px;
+  padding:14px;
+}
+.sound-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.sound-info strong{display:block;font-size:14px}
+.sound-info small{display:block;color:var(--muted);font-size:11px;margin-top:4px}
+.sound-test{
+  border:1px solid #4c6c9d;
+  background:#19345f;
+  color:#e7f0ff;
+  padding:9px 12px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:800;
+}
+.volume-row{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:10px;
+  align-items:center;
+  margin-top:12px;
+  color:var(--muted);
+  font-size:12px;
+}
+.volume-row input{width:100%}
+.source-link{
+  color:#9fc1ef;
+  text-decoration:none;
+}
+.source-link:hover{text-decoration:underline}
+
 </style>
 </head>
 <body>
@@ -379,7 +448,7 @@ body.force-desktop{
 
       <div class="card">
         <div class="section-kicker">UPCOMING</div>
-        <h3>この先の注目予定</h3>
+        <h3>この先7日間の注目予定</h3>
         <div class="hero-grid">
           <div class="hero">
             <div class="eyebrow">次の重要指標</div>
@@ -442,11 +511,37 @@ body.force-desktop{
         <div class="notify-label">いつ通知する？</div>
         <div class="choice-grid"><button class="choice active">60分前</button><button class="choice active">30分前</button><button class="choice active">5分前</button><button class="choice">発表直前</button></div>
       </div>
+
+      <div class="notify-group">
+        <div class="notify-label">通知音</div>
+        <div class="sound-panel">
+          <div class="sound-row">
+            <div class="sound-info">
+              <strong>New Notification 032</strong>
+              <small>重要イベント通知用・約2秒</small>
+            </div>
+            <button id="testSoundBtn" class="sound-test" type="button">▶ 試し鳴らし</button>
+          </div>
+          <div class="volume-row">
+            <span>小</span>
+            <input id="notificationVolume" type="range" min="0" max="100" value="90">
+            <span>大</span>
+          </div>
+          <div class="note">
+            音源：<a class="source-link" href="https://pixabay.com/sound-effects/technology-new-notification-032-480570/" target="_blank" rel="noopener">Pixabay / New Notification 032</a>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
   <section id="glossary" class="hidden">
-    <div class="card simple"><h3>用語集</h3><p>CPI / 雇用統計 / FOMC / 政策金利 / PMI / FRBなどを短く解説します。</p></div>
+    <div class="card">
+      <h3>用語集</h3>
+      <p class="calendar-help">FXや経済指標でよく見る言葉を、短く分かりやすくまとめています。</p>
+      <input id="glossarySearch" class="glossary-search" type="search" placeholder="例：ISM、物価、雇用、ふぉむしー、金利…">
+      <div id="glossaryList" class="glossary-list"></div>
+    </div>
   </section>
 
   <section id="settings" class="hidden">
@@ -596,10 +691,11 @@ function renderHero(kind){
     .sort((a,b)=>a.date-b.date);
   const next=pool[0];
   const prefix=kind==="rate"?"rate":"indicator";
-  if(!next){
+  const maxUpcomingMs = 7*24*60*60*1000;
+  if(!next || (next.date-Date.now()) > maxUpcomingMs){
     document.getElementById(prefix+"Title").textContent="予定なし";
     document.getElementById(prefix+"Time").textContent="--:--";
-    document.getElementById(prefix+"Count").textContent="現在取得済みの予定にはありません";
+    document.getElementById(prefix+"Count").textContent="今後7日以内に該当イベントはありません";
     return;
   }
   const p=jstParts(next.date);
@@ -826,6 +922,151 @@ function updateMarkets(){
   document.getElementById("marketNow").textContent=open.length?`現在：${open.join(" × ")}`:"現在：主要市場クローズ";
   document.getElementById("overlapBadge").textContent=open.length>=2?"🔥 市場重複中":"市場状況を自動判定";
 }
+
+
+const glossaryTerms = [
+  {term:"ISMサービスPMI", aliases:["ism services","ism service","サービスpmi","非製造業ism","あいえすえむ","景況感"], desc:"米国のサービス業の景況感を示す指数。50を上回ると拡大、下回ると縮小の目安。ドル相場が大きく反応することがあります。"},
+  {term:"ISM製造業PMI", aliases:["ism manufacturing","製造業pmi","あいえすえむ製造","景況感"], desc:"米国の製造業の景況感を示す指数。新規受注や雇用なども含み、景気の先行きを見る材料になります。"},
+  {term:"CPI", aliases:["consumer price index","消費者物価指数","物価","インフレ","しーぴーあい"], desc:"消費者が買うモノやサービスの価格変化を示す指数。インフレ判断の代表的な指標で、金利見通しや為替に影響しやすいです。"},
+  {term:"コアCPI", aliases:["core cpi","コア消費者物価","生鮮除く","食品エネルギー除く"], desc:"価格変動の大きい項目を除いて基調的な物価を見る指標。中央銀行の政策判断で注目されます。"},
+  {term:"PCE価格指数", aliases:["pce","pce price index","個人消費支出","物価"], desc:"米国の個人消費に基づく物価指標。FRBが重視するインフレ指標として知られています。"},
+  {term:"雇用統計", aliases:["employment report","jobs report","米国雇用","こようとうけい"], desc:"米国の雇用状況をまとめた重要統計。非農業部門雇用者数・失業率・平均時給などが一度に発表され、相場が大きく動くことがあります。"},
+  {term:"非農業部門雇用者数", aliases:["nonfarm payrolls","nfp","雇用者数","のんふぁーむ"], desc:"農業部門を除いた雇用者数の増減。米雇用統計の中心的な項目で、予想との差が大きいとドルが急変しやすいです。"},
+  {term:"失業率", aliases:["unemployment rate","雇用","しつぎょう"], desc:"労働力人口のうち失業している人の割合。景気や金融政策の判断材料になります。"},
+  {term:"新規失業保険申請件数", aliases:["initial jobless claims","jobless claims","失業保険","しんきしつぎょう"], desc:"米国で新たに失業保険を申請した人数。毎週発表され、雇用環境の変化を早めに確認できる指標です。"},
+  {term:"FOMC", aliases:["federal open market committee","連邦公開市場委員会","ふぉむしー","えふおーえむしー"], desc:"米国の金融政策を決める会合。政策金利や今後の金利見通しが示され、ドル・株・債券に大きな影響を与えます。"},
+  {term:"FOMC議事要旨", aliases:["fomc minutes","minutes","議事録","議事要旨"], desc:"過去のFOMCでどんな議論が行われたかをまとめた文書。政策金利の発表そのものではありませんが、今後の金融政策を読む材料になります。"},
+  {term:"政策金利", aliases:["interest rate","policy rate","rate decision","金利発表","せいさくきんり"], desc:"中央銀行が金融政策の基準として定める金利。変更や今後の見通しによって通貨が大きく動くことがあります。"},
+  {term:"FRB", aliases:["federal reserve","連邦準備制度","fed","えふあーるびー"], desc:"米国の中央銀行制度。FOMCを通じて政策金利などの金融政策を決めます。"},
+  {term:"ECB", aliases:["european central bank","欧州中央銀行","いーしーびー"], desc:"ユーロ圏の中央銀行。政策金利の決定や総裁発言はユーロ相場に大きく影響します。"},
+  {term:"BOJ／日銀", aliases:["bank of japan","boj","日本銀行","にちぎん"], desc:"日本の中央銀行。金融政策決定会合で政策方針を決め、円相場に大きな影響を与えます。"},
+  {term:"BOE", aliases:["bank of england","英国中央銀行","イングランド銀行"], desc:"英国の中央銀行。政策金利や金融政策の発表はポンド相場の重要材料です。"},
+  {term:"GDP", aliases:["gross domestic product","国内総生産","じーでぃーぴー","景気"], desc:"一定期間に国内で生み出されたモノやサービスの付加価値。経済全体の成長率を見る代表的な指標です。"},
+  {term:"PMI", aliases:["purchasing managers index","購買担当者景気指数","ぴーえむあい"], desc:"企業の購買担当者への調査から景況感を数値化した指数。50が景気拡大・縮小の目安です。"},
+  {term:"小売売上高", aliases:["retail sales","しょうり","消費"], desc:"小売店の売上を集計し、個人消費の強さを見る指標。米国ではGDPの大きな部分を占める消費の動向を見る材料になります。"},
+  {term:"要人発言", aliases:["speech","remarks","中央銀行総裁","パウエル","植田総裁"], desc:"中央銀行関係者や政府高官の発言。金利や景気について予想外の内容が出ると、予定された統計発表と同様に相場が動くことがあります。"},
+  {term:"スプレッド", aliases:["spread","売値買値","bid ask","すぷれっど"], desc:"買値と売値の差。重要指標の発表直後などは広がることがあり、取引コストが増える場合があります。"},
+  {term:"ボラティリティ", aliases:["volatility","値動き","変動率","ぼら"], desc:"価格変動の大きさを表す言葉。ボラティリティが高いほど値動きは大きいですが、利益が出やすいという意味ではありません。"}
+];
+
+function normalizeSearchText(s){
+  return String(s||"")
+    .toLowerCase()
+    .normalize("NFKC")
+    .replace(/[・／/_\-\s]/g,"")
+    .replace(/[ぁ-ん]/g,ch=>String.fromCharCode(ch.charCodeAt(0)+0x60));
+}
+
+function levenshtein(a,b){
+  const m=a.length,n=b.length;
+  if(!m) return n;
+  if(!n) return m;
+  const dp=Array.from({length:n+1},(_,i)=>i);
+  for(let i=1;i<=m;i++){
+    let prev=dp[0];
+    dp[0]=i;
+    for(let j=1;j<=n;j++){
+      const temp=dp[j];
+      dp[j]=Math.min(dp[j]+1,dp[j-1]+1,prev+(a[i-1]===b[j-1]?0:1));
+      prev=temp;
+    }
+  }
+  return dp[n];
+}
+
+function glossaryScore(item, query){
+  const q=normalizeSearchText(query);
+  if(!q) return 1;
+  const fields=[item.term,...item.aliases,item.desc].map(normalizeSearchText);
+  let best=0;
+  for(const f of fields){
+    if(f.includes(q)) best=Math.max(best,100-Math.max(0,f.indexOf(q)));
+    if(q.includes(f) && f.length>=3) best=Math.max(best,85);
+    const probe=f.slice(0,Math.max(q.length,Math.min(f.length,16)));
+    const dist=levenshtein(q,probe);
+    if(q.length>=3 && dist<=Math.max(1,Math.floor(q.length*0.34))){
+      best=Math.max(best,70-dist*8);
+    }
+  }
+  return best;
+}
+
+function renderGlossary(){
+  const q=document.getElementById("glossarySearch")?.value || "";
+  const list=document.getElementById("glossaryList");
+  if(!list) return;
+  const matched=glossaryTerms
+    .map(x=>({x,score:glossaryScore(x,q)}))
+    .filter(x=>x.score>0)
+    .sort((a,b)=>b.score-a.score || a.x.term.localeCompare(b.x.term,"ja"));
+
+  if(!matched.length){
+    list.innerHTML='<div class="glossary-empty">該当する用語が見つかりませんでした</div>';
+    return;
+  }
+
+  list.innerHTML=matched.map(({x})=>`
+    <div class="glossary-item">
+      <h4>${escapeHtml(x.term)}</h4>
+      <div class="glossary-aliases">${escapeHtml(x.aliases.join(" / "))}</div>
+      <p>${escapeHtml(x.desc)}</p>
+    </div>`).join("");
+}
+
+document.getElementById("glossarySearch")?.addEventListener("input",renderGlossary);
+renderGlossary();
+
+/* Notification sound
+   If notification.mp3 exists next to index.html, it is used.
+   Otherwise a strong two-tone Web Audio fallback is played. */
+let notificationAudio=null;
+
+function getNotificationVolume(){
+  return Number(localStorage.getItem("fxsignal_notification_volume") ?? 90)/100;
+}
+
+function playFallbackChime(){
+  const AudioCtx=window.AudioContext||window.webkitAudioContext;
+  if(!AudioCtx) return;
+  const ctx=new AudioCtx();
+  const gain=ctx.createGain();
+  gain.connect(ctx.destination);
+  gain.gain.setValueAtTime(Math.max(.05,getNotificationVolume()),ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+1.6);
+
+  [880,1175].forEach((freq,i)=>{
+    const osc=ctx.createOscillator();
+    osc.type="sine";
+    osc.frequency.value=freq;
+    osc.connect(gain);
+    const start=ctx.currentTime+i*.18;
+    osc.start(start);
+    osc.stop(start+.65);
+  });
+}
+
+async function playNotificationSound(){
+  try{
+    if(!notificationAudio){
+      notificationAudio=new Audio("notification.mp3");
+      notificationAudio.preload="auto";
+    }
+    notificationAudio.volume=getNotificationVolume();
+    notificationAudio.currentTime=0;
+    await notificationAudio.play();
+  }catch(e){
+    playFallbackChime();
+  }
+}
+
+const volumeInput=document.getElementById("notificationVolume");
+if(volumeInput){
+  volumeInput.value=String(Math.round(getNotificationVolume()*100));
+  volumeInput.addEventListener("input",()=>{
+    localStorage.setItem("fxsignal_notification_volume",volumeInput.value);
+  });
+}
+document.getElementById("testSoundBtn")?.addEventListener("click",playNotificationSound);
 
 const allNav=[...document.querySelectorAll("[data-target]")], sections=[...document.querySelectorAll("main section")];
 function show(target){if(target==="glossary"&&document.body.classList.contains("beginner-hidden"))target="home";sections.forEach(s=>s.classList.toggle("hidden",s.id!==target));allNav.forEach(b=>b.classList.toggle("active",b.dataset.target===target))}
