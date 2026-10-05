@@ -748,6 +748,25 @@ body.force-desktop{
   }
 }
 
+
+.notification-toast{
+  position:fixed;
+  right:18px;
+  top:18px;
+  z-index:200;
+  width:min(360px,calc(100vw - 36px));
+  background:#111a2a;
+  border:1px solid #4b658c;
+  border-radius:16px;
+  padding:14px;
+  box-shadow:0 18px 60px rgba(0,0,0,.45);
+}
+.notification-toast strong{display:block;font-size:14px}
+.notification-toast p{margin:6px 0 0;color:#c3cfde;font-size:12px;line-height:1.5}
+.notification-toast.hidden{display:none}
+.scheduler-ok{color:#9fe0bd}
+.scheduler-warn{color:#f2cf79}
+
 </style>
 </head>
 <body>
@@ -786,7 +805,7 @@ body.force-desktop{
         </div>
       </div>
 
-      <div class="today-score">
+      <div class="today-score beginner-only">
         <div class="today-score-top">
           <div>
             <div class="score-label">今日の市場アクティビティ予測</div>
@@ -799,7 +818,7 @@ body.force-desktop{
         </div>
       </div>
 
-      <div class="focus-card">
+      <div class="focus-card beginner-only">
         <div class="focus-title">次に見るべきイベント</div>
         <div id="focusTitle" class="focus-event">読み込み中...</div>
         <div id="focusTime" class="focus-time">--:--</div>
@@ -917,14 +936,79 @@ body.force-desktop{
     <div class="card">
       <h3>通知設定</h3>
       <div class="notify-group">
-        <div class="notify-label">通知するイベント</div>
-        <label class="setting-row"><div><strong>🔥 重要度3の経済指標</strong><small>CPI・雇用統計など</small></div><input type="checkbox" checked></label>
-        <label class="setting-row"><div><strong>🏦 政策金利発表</strong><small>FOMCなど</small></div><input type="checkbox" checked></label>
-        <label class="setting-row"><div><strong>🎙 要人発言</strong><small>中央銀行関係者など</small></div><input type="checkbox"></label>
+        <div class="notify-label">通知全体</div>
+        <label class="setting-row">
+          <div>
+            <strong>すべての通知</strong>
+            <small>OFFにすると個別設定を残したまま通知を一括停止します</small>
+          </div>
+          <input id="notifyMaster" type="checkbox" checked>
+        </label>
       </div>
+
+      <div class="notify-group">
+        <div class="notify-label">通知するイベント</div>
+
+        <label class="setting-row">
+          <div>
+            <strong>★☆☆ 参考指標</strong>
+            <small>重要度1の経済指標も通知</small>
+          </div>
+          <input id="notifyImportance1" type="checkbox">
+        </label>
+
+        <label class="setting-row">
+          <div>
+            <strong>★★☆ 注目指標</strong>
+            <small>重要度2の経済指標を通知</small>
+          </div>
+          <input id="notifyImportance2" type="checkbox" checked>
+        </label>
+
+        <label class="setting-row">
+          <div>
+            <strong>★★★ 重要指標</strong>
+            <small>重要度3の経済指標を通知</small>
+          </div>
+          <input id="notifyImportance3" type="checkbox" checked>
+        </label>
+
+        <label class="setting-row">
+          <div>
+            <strong>🏦 政策金利</strong>
+            <small>中央銀行の政策金利発表</small>
+          </div>
+          <input id="notifyRates" type="checkbox" checked>
+        </label>
+
+        <label class="setting-row">
+          <div>
+            <strong>🏛 中央銀行関連</strong>
+            <small>議事要旨・会合・重要な中央銀行イベント</small>
+          </div>
+          <input id="notifyCentralBank" type="checkbox" checked>
+        </label>
+
+        <label class="setting-row">
+          <div>
+            <strong>🎙 要人発言</strong>
+            <small>中央銀行関係者などの発言</small>
+          </div>
+          <input id="notifySpeech" type="checkbox">
+        </label>
+      </div>
+
       <div class="notify-group">
         <div class="notify-label">いつ通知する？</div>
-        <div class="choice-grid"><button class="choice active">60分前</button><button class="choice active">30分前</button><button class="choice active">5分前</button><button class="choice">発表直前</button></div>
+        <div class="choice-grid">
+          <button class="choice notify-time active" data-notify-minutes="60" type="button">60分前</button>
+          <button class="choice notify-time active" data-notify-minutes="30" type="button">30分前</button>
+          <button class="choice notify-time active" data-notify-minutes="5" type="button">5分前</button>
+          <button class="choice notify-time" data-notify-minutes="0" type="button">発表直前</button>
+        </div>
+        <div id="notificationSchedulerStatus" class="note" style="margin-top:10px">
+          通知スケジューラーを準備中...
+        </div>
       </div>
 
       <div class="notify-group">
@@ -2107,6 +2191,8 @@ async function loadData(){
     events=dedupeEvents((await r.json()).map(normalize));
     box.classList.add("ok"); text.textContent=`Supabase接続済み・${events.length}件取得`;
     renderHome(); renderCalendar();
+    updateNotificationSchedulerStatus();
+    checkScheduledNotifications();
   }catch(err){
     box.classList.add("error"); text.textContent=`接続エラー: ${err.message}`;
     document.getElementById("homeTimeline").innerHTML='<div class="empty">Supabaseから予定を取得できませんでした</div>';
@@ -2274,6 +2360,284 @@ if(volumeInput){
 }
 document.getElementById("testSoundBtn")?.addEventListener("click",playNotificationSound);
 
+const NOTIFY_PREFS_KEY="fxsignal_notify_prefs";
+const NOTIFIED_KEY="fxsignal_notified_keys";
+
+function defaultNotifyPrefs(){
+  return {
+    master:true,
+    importance1:false,
+    importance2:true,
+    importance3:true,
+    rates:true,
+    centralBank:true,
+    speech:false,
+    minutes:[60,30,5]
+  };
+}
+
+function loadNotifyPrefs(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(NOTIFY_PREFS_KEY)||"null");
+    return {...defaultNotifyPrefs(),...(raw||{})};
+  }catch{
+    return defaultNotifyPrefs();
+  }
+}
+
+function saveNotifyPrefs(){
+  const prefs={
+    master:!!document.getElementById("notifyMaster")?.checked,
+    importance1:!!document.getElementById("notifyImportance1")?.checked,
+    importance2:!!document.getElementById("notifyImportance2")?.checked,
+    importance3:!!document.getElementById("notifyImportance3")?.checked,
+    rates:!!document.getElementById("notifyRates")?.checked,
+    centralBank:!!document.getElementById("notifyCentralBank")?.checked,
+    speech:!!document.getElementById("notifySpeech")?.checked,
+    minutes:[...document.querySelectorAll(".notify-time.active")]
+      .map(btn=>Number(btn.dataset.notifyMinutes))
+      .filter(n=>Number.isFinite(n))
+  };
+  localStorage.setItem(NOTIFY_PREFS_KEY,JSON.stringify(prefs));
+  updateNotificationSchedulerStatus();
+}
+
+function applyNotifyPrefs(){
+  const prefs=loadNotifyPrefs();
+
+  const pairs=[
+    ["notifyMaster","master"],
+    ["notifyImportance1","importance1"],
+    ["notifyImportance2","importance2"],
+    ["notifyImportance3","importance3"],
+    ["notifyRates","rates"],
+    ["notifyCentralBank","centralBank"],
+    ["notifySpeech","speech"]
+  ];
+
+  pairs.forEach(([id,key])=>{
+    const el=document.getElementById(id);
+    if(el) el.checked=!!prefs[key];
+  });
+
+  document.querySelectorAll(".notify-time").forEach(btn=>{
+    btn.classList.toggle("active",prefs.minutes.includes(Number(btn.dataset.notifyMinutes)));
+  });
+}
+
+function shouldNotifyEvent(e,prefs){
+  if(!prefs.master) return false;
+  if(e.type==="rate") return prefs.rates;
+  if(e.type==="central_bank") return prefs.centralBank;
+  if(e.type==="speech") return prefs.speech;
+
+  const level=correctedClientImportance(e);
+  if(level>=3) return prefs.importance3;
+  if(level===2) return prefs.importance2;
+  return prefs.importance1;
+}
+
+function loadNotifiedSet(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(NOTIFIED_KEY)||"[]");
+    return new Set(Array.isArray(raw)?raw:[]);
+  }catch{
+    return new Set();
+  }
+}
+
+function saveNotifiedSet(set){
+  // Avoid infinite growth: retain only the newest ~400 notification keys.
+  const arr=[...set];
+  localStorage.setItem(NOTIFIED_KEY,JSON.stringify(arr.slice(-400)));
+}
+
+function notificationKey(e,minutes){
+  return `${eventKey(e)}|${minutes}`;
+}
+
+function showNotificationToast(e,minutes){
+  const box=document.getElementById("notificationToast");
+  if(!box) return;
+
+  const when=minutes===0 ? "まもなく発表" : `${minutes}分前`;
+  document.getElementById("notificationToastTitle").textContent=
+    `${eventCategoryLabel(e)}：${when}`;
+  document.getElementById("notificationToastText").textContent=
+    `${eventDisplayName(e)}　${importanceStars(e)}`;
+
+  box.classList.remove("hidden");
+  clearTimeout(showNotificationToast._timer);
+  showNotificationToast._timer=setTimeout(()=>box.classList.add("hidden"),9000);
+}
+
+async function fireEventNotification(e,minutes){
+  await playNotificationSound();
+  showNotificationToast(e,minutes);
+
+  // Standard browser notification when permission already exists.
+  // Custom sounds are not guaranteed by browsers, so the in-page sound above
+  // remains the authoritative sound.
+  if("Notification" in window && Notification.permission==="granted"){
+    try{
+      new Notification("FX SIGNAL",{
+        body:`${minutes===0?"まもなく":minutes+"分前"}：${eventDisplayName(e)} ${importanceStars(e)}`,
+        tag:`fxsignal-${eventKey(e)}-${minutes}`
+      });
+    }catch{}
+  }
+}
+
+function checkScheduledNotifications(){
+  if(!events.length) return;
+
+  const prefs=loadNotifyPrefs();
+  if(!prefs.minutes.length) return;
+
+  const now=Date.now();
+  const notified=loadNotifiedSet();
+  let changed=false;
+
+  for(const e of events){
+    if(!shouldNotifyEvent(e,prefs)) continue;
+
+    const eventMs=toUtcDate(e).getTime();
+    if(!Number.isFinite(eventMs)) continue;
+
+    for(const minutes of prefs.minutes){
+      const targetMs=eventMs - minutes*60*1000;
+      const diff=now-targetMs;
+
+      // Fire once within a 45-second window after the target time.
+      // This is tolerant of timer throttling while preventing very late alerts.
+      if(diff>=0 && diff<=45_000){
+        const key=notificationKey(e,minutes);
+        if(!notified.has(key)){
+          notified.add(key);
+          changed=true;
+          fireEventNotification(e,minutes);
+        }
+      }
+    }
+  }
+
+  if(changed) saveNotifiedSet(notified);
+}
+
+function nextScheduledNotification(){
+  const prefs=loadNotifyPrefs();
+  const now=Date.now();
+  let next=null;
+
+  for(const e of events){
+    if(!shouldNotifyEvent(e,prefs)) continue;
+    const eventMs=toUtcDate(e).getTime();
+
+    for(const minutes of prefs.minutes){
+      const targetMs=eventMs-minutes*60*1000;
+      if(targetMs<=now) continue;
+      if(!next || targetMs<next.targetMs){
+        next={e,minutes,targetMs};
+      }
+    }
+  }
+  return next;
+}
+
+function updateNotificationSchedulerStatus(){
+  const el=document.getElementById("notificationSchedulerStatus");
+  if(!el) return;
+
+  const prefs=loadNotifyPrefs();
+
+  if(!prefs.master){
+    el.className="note scheduler-warn";
+    el.textContent="すべての通知がOFFです";
+    return;
+  }
+
+  if(!prefs.minutes.length){
+    el.className="note scheduler-warn";
+    el.textContent="通知タイミングが1つも選択されていません";
+    return;
+  }
+
+  if(!events.length){
+    el.className="note scheduler-warn";
+    el.textContent="予定データを読み込み中です";
+    return;
+  }
+
+  const next=nextScheduledNotification();
+  if(!next){
+    el.className="note scheduler-warn";
+    el.textContent="現在の設定では、今後の通知対象はありません";
+    return;
+  }
+
+  const p=jstParts(new Date(next.targetMs));
+  el.className="note scheduler-ok";
+  el.textContent=
+    `通知スケジューラー稼働中：次回 ${p.date} ${p.time}（${next.minutes===0?"発表直前":next.minutes+"分前"}）`;
+}
+
+function initNotificationControls(){
+  applyNotifyPrefs();
+
+  [
+    "notifyMaster",
+    "notifyImportance1","notifyImportance2","notifyImportance3",
+    "notifyRates","notifyCentralBank","notifySpeech"
+  ].forEach(id=>{
+    document.getElementById(id)?.addEventListener("change",saveNotifyPrefs);
+  });
+
+  document.querySelectorAll(".notify-time").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      btn.classList.toggle("active");
+      saveNotifyPrefs();
+    });
+  });
+
+  updateNotificationSchedulerStatus();
+}
+
+// Audio autoplay restrictions mean the page must have received at least one
+// user interaction before browsers reliably allow scheduled sound playback.
+// Resume an AudioContext once on first interaction to "arm" notifications.
+let notificationsArmed=false;
+function armNotifications(){
+  if(notificationsArmed) return;
+  notificationsArmed=true;
+
+  const AudioCtx=window.AudioContext||window.webkitAudioContext;
+  if(AudioCtx){
+    try{
+      const ctx=new AudioCtx();
+      if(ctx.state==="suspended") ctx.resume();
+      // tiny silent oscillator; no audible output
+      const gain=ctx.createGain();
+      gain.gain.value=0.00001;
+      gain.connect(ctx.destination);
+      const osc=ctx.createOscillator();
+      osc.connect(gain);
+      osc.start();
+      osc.stop(ctx.currentTime+0.01);
+    }catch{}
+  }
+
+  updateNotificationSchedulerStatus();
+}
+
+["click","keydown","touchstart"].forEach(type=>{
+  document.addEventListener(type,armNotifications,{once:true,passive:true});
+});
+
+initNotificationControls();
+setInterval(checkScheduledNotifications,15_000);
+setInterval(updateNotificationSchedulerStatus,30_000);
+
+
 const allNav=[...document.querySelectorAll("[data-target]")], sections=[...document.querySelectorAll("main section")];
 function show(target){if(target==="glossary"&&document.body.classList.contains("beginner-hidden"))target="home";sections.forEach(s=>s.classList.toggle("hidden",s.id!==target));allNav.forEach(b=>b.classList.toggle("active",b.dataset.target===target))}
 allNav.forEach(b=>b.addEventListener("click",()=>show(b.dataset.target)));
@@ -2284,7 +2648,6 @@ applyBeginner(localStorage.getItem("fxsignal_beginner")!=="0");
 beginnerToggle.addEventListener("change",e=>applyBeginner(e.target.checked));
 modeBadge.addEventListener("click",()=>applyBeginner(document.body.classList.contains("beginner-hidden")));
 
-document.querySelectorAll(".choice").forEach(b=>b.addEventListener("click",()=>b.classList.toggle("active")));
 
 document.querySelectorAll(".calendar-view-btn").forEach(btn=>{
   btn.addEventListener("click",()=>setCalendarView(btn.dataset.calendarView));
@@ -2374,6 +2737,12 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 </script>
 
+
+
+<div id="notificationToast" class="notification-toast hidden" role="status" aria-live="polite">
+  <strong id="notificationToastTitle">FX SIGNAL</strong>
+  <p id="notificationToastText"></p>
+</div>
 
 <div id="dayPopupBackdrop" class="day-popup-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="dayPopupTitle">
   <div class="day-popup">
