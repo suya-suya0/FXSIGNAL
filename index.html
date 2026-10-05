@@ -195,6 +195,94 @@ body.beginner-hidden .beginner-only,body.beginner-hidden .glossary-nav{display:n
   .day-card{padding:9px 4px}
 }
 
+
+.view-mode-block{
+  padding-top:14px;
+  margin-top:6px;
+  border-top:1px solid var(--line);
+}
+.view-mode-block strong{display:block;font-size:14px}
+.view-mode-block small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.view-mode-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-top:10px;
+}
+.view-mode-btn{
+  border:1px solid #34445f;
+  background:#121b2d;
+  color:#9eacc0;
+  padding:10px 8px;
+  border-radius:11px;
+  font-weight:900;
+  cursor:pointer;
+}
+.view-mode-btn.active{
+  background:#19345f;
+  color:#dce9ff;
+  border-color:#4d78b8;
+}
+
+/* 強制スマホ表示 */
+body.force-mobile .app{display:block}
+body.force-mobile .sidebar{display:none}
+body.force-mobile .content{
+  padding:14px 14px 88px;
+  max-width:520px;
+}
+body.force-mobile .grid,
+body.force-mobile .calendar-layout,
+body.force-mobile .hero-grid{grid-template-columns:1fr}
+body.force-mobile .choice-grid{grid-template-columns:repeat(2,1fr)}
+body.force-mobile .mobile-nav{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  position:fixed;
+  left:0;right:0;bottom:0;
+  background:#0d1424;
+  border-top:1px solid var(--line);
+  padding:8px 6px 10px;
+  z-index:10;
+}
+body.force-mobile .mobile-nav button{
+  border:0;background:transparent;color:#7f8da6;
+  font-size:11px;padding:7px 2px;border-radius:10px;
+}
+body.force-mobile .mobile-nav button.active{background:#16213a;color:#d8e6ff}
+body.force-mobile .mobile-nav span{display:block;font-size:18px;margin-bottom:2px}
+
+/* 強制PC表示 */
+body.force-desktop .app{
+  display:grid !important;
+  grid-template-columns:240px 1fr !important;
+}
+body.force-desktop .sidebar{
+  display:block !important;
+  background:#0c1322;
+  border-right:1px solid var(--line);
+  padding:24px 16px;
+  position:sticky;
+  top:0;
+  height:100vh;
+}
+body.force-desktop .content{
+  padding:24px !important;
+  max-width:1400px !important;
+  width:100% !important;
+}
+body.force-desktop .grid{grid-template-columns:1.08fr .92fr !important}
+body.force-desktop .calendar-layout{grid-template-columns:1.3fr .7fr !important}
+body.force-desktop .hero-grid{grid-template-columns:1fr 1fr !important}
+body.force-desktop .choice-grid{grid-template-columns:repeat(4,1fr) !important}
+body.force-desktop .mobile-nav{display:none !important}
+
+/* 狭い端末でPC強制表示した場合は横スクロール可能に */
+body.force-desktop{
+  min-width:1100px;
+  overflow-x:auto;
+}
+
 </style>
 </head>
 <body>
@@ -354,6 +442,16 @@ body.beginner-hidden .beginner-only,body.beginner-hidden .glossary-nav{display:n
       <div class="notify-group">
         <div class="notify-label">表示モード</div>
         <label class="setting-row"><div><strong>初心者モード</strong><small>やさしい補足説明と用語集を表示</small></div><input id="beginnerToggle" type="checkbox" checked></label>
+
+        <div class="view-mode-block">
+          <strong>画面レイアウト</strong>
+          <small>端末に関係なくPC版 / スマホ版を強制表示できます</small>
+          <div class="view-mode-grid">
+            <button class="view-mode-btn" data-view-mode="auto" type="button">自動</button>
+            <button class="view-mode-btn" data-view-mode="desktop" type="button">PC表示</button>
+            <button class="view-mode-btn" data-view-mode="mobile" type="button">スマホ表示</button>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -635,6 +733,27 @@ document.getElementById("prevDay").addEventListener("click",()=>{selectedDate.se
 document.getElementById("nextDay").addEventListener("click",()=>{selectedDate.setDate(selectedDate.getDate()+1);renderCalendar()});
 document.getElementById("todayBtn").addEventListener("click",()=>{selectedDate=new Date();renderCalendar()});
 document.getElementById("refreshData").addEventListener("click",loadData);
+
+
+const viewModeButtons=[...document.querySelectorAll(".view-mode-btn")];
+
+function applyViewMode(mode){
+  document.body.classList.remove("force-mobile","force-desktop");
+  if(mode==="mobile") document.body.classList.add("force-mobile");
+  if(mode==="desktop") document.body.classList.add("force-desktop");
+
+  viewModeButtons.forEach(btn=>{
+    btn.classList.toggle("active", btn.dataset.viewMode===mode);
+  });
+
+  localStorage.setItem("fxsignal_view_mode", mode);
+}
+
+viewModeButtons.forEach(btn=>{
+  btn.addEventListener("click",()=>applyViewMode(btn.dataset.viewMode));
+});
+
+applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 
 updateMarkets(); setInterval(updateMarkets,60000); loadData();
 </script>
