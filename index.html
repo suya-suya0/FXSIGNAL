@@ -768,6 +768,14 @@ body.force-desktop{
 .scheduler-warn{color:#f2cf79}
 
 </style>
+
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#0b1220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FX SIGNAL">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+
 </head>
 <body>
 <div class="app">
@@ -1071,7 +1079,18 @@ body.force-desktop{
           </div>
         </div>
       </div>
-    </div>
+    
+      <div class="notify-group">
+        <div class="notify-label">スマホアプリ</div>
+        <div class="setting-row">
+          <div>
+            <strong>FX SIGNALをホーム画面に追加</strong>
+            <small id="pwaInstallHelp">対応ブラウザではアプリとしてインストールできます</small>
+          </div>
+          <button id="pwaInstallBtn" class="mini primary" type="button">インストール</button>
+        </div>
+      </div>
+</div>
   </section>
 </main>
 </div>
@@ -2763,6 +2782,73 @@ viewModeButtons.forEach(btn=>{
 applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
+
+let deferredInstallPrompt = null;
+
+function updatePwaInstallUi(){
+  const btn=document.getElementById("pwaInstallBtn");
+  const help=document.getElementById("pwaInstallHelp");
+  if(!btn || !help) return;
+
+  const standalone =
+    window.matchMedia?.("(display-mode: standalone)")?.matches ||
+    window.navigator.standalone === true;
+
+  if(standalone){
+    btn.disabled=true;
+    btn.textContent="インストール済み";
+    help.textContent="ホーム画面からアプリとして起動しています";
+    return;
+  }
+
+  if(deferredInstallPrompt){
+    btn.disabled=false;
+    btn.textContent="インストール";
+    help.textContent="タップするとFX SIGNALをホーム画面に追加できます";
+    return;
+  }
+
+  const isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if(isIOS){
+    btn.disabled=true;
+    btn.textContent="Safariから追加";
+    help.textContent="Safariの共有ボタン →「ホーム画面に追加」でインストールできます";
+  }else{
+    btn.disabled=true;
+    btn.textContent="準備中";
+    help.textContent="ブラウザがインストール可能と判断するとボタンが有効になります";
+  }
+}
+
+window.addEventListener("beforeinstallprompt",e=>{
+  e.preventDefault();
+  deferredInstallPrompt=e;
+  updatePwaInstallUi();
+});
+
+window.addEventListener("appinstalled",()=>{
+  deferredInstallPrompt=null;
+  updatePwaInstallUi();
+});
+
+document.getElementById("pwaInstallBtn")?.addEventListener("click",async()=>{
+  if(!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  try{ await deferredInstallPrompt.userChoice; }catch{}
+  deferredInstallPrompt=null;
+  updatePwaInstallUi();
+});
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("./service-worker.js")
+      .then(()=>{})
+      .catch(err=>console.warn("Service Worker registration failed:",err));
+  });
+}
+
+updatePwaInstallUi();
+
 </script>
 
 
