@@ -1,4 +1,4 @@
-const CACHE_NAME = "fx-signal-v5";
+const CACHE_NAME = "fx-signal-v6";
 
 const STATIC_ASSETS = [
   "./manifest.json",
@@ -12,20 +12,15 @@ const STATIC_ASSETS = [
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache =>
-      Promise.all(
-        STATIC_ASSETS.map(url => cache.add(url).catch(() => null))
-      )
+      Promise.all(STATIC_ASSETS.map(url => cache.add(url).catch(() => null)))
     )
   );
-  // Wait for explicit user approval from the in-app update button.
 });
 
 self.addEventListener("activate", event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-      )
+      Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))
     )
   );
   self.clients.claim();
@@ -53,6 +48,13 @@ self.addEventListener("fetch", event => {
     return;
   }
 
+  // Never cache version.json; it is the source of truth for update availability.
+  if (url.pathname.endsWith("/version.json")) {
+    event.respondWith(fetch(req, { cache: "no-store" }));
+    return;
+  }
+
+  // HTML/navigation always network-first.
   if (
     req.mode === "navigate" ||
     url.pathname.endsWith("/index.html") ||

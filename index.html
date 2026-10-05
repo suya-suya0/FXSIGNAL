@@ -919,6 +919,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
+<meta name="fx-signal-version" content="2026.10.05-v6">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -3059,7 +3060,34 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
 
-const FX_SIGNAL_APP_VERSION="2026.10.05-v5";
+const FX_SIGNAL_APP_VERSION="2026.10.05-v6";
+
+let fxSignalLatestVersion = FX_SIGNAL_APP_VERSION;
+
+async function fetchLatestAppVersion(){
+  try{
+    const res=await fetch(`./version.json?t=${Date.now()}`,{cache:"no-store"});
+    if(!res.ok) return FX_SIGNAL_APP_VERSION;
+    const data=await res.json();
+    return String(data.version||FX_SIGNAL_APP_VERSION);
+  }catch{
+    return FX_SIGNAL_APP_VERSION;
+  }
+}
+
+async function refreshUpdateBannerByVersion(){
+  fxSignalLatestVersion=await fetchLatestAppVersion();
+  const needsUpdate=fxSignalLatestVersion!==FX_SIGNAL_APP_VERSION;
+
+  if(needsUpdate){
+    const status=document.getElementById("appUpdateStatus");
+    if(status) status.textContent=`最新版 ${fxSignalLatestVersion} を利用できます`;
+    showAppUpdateBanner();
+  }else{
+    hideAppUpdateBanner();
+  }
+}
+
 let fxSignalRegistration = null;
 let fxSignalRefreshing = false;
 
@@ -3070,16 +3098,18 @@ function hasRealWaitingUpdate(reg){
 }
 
 function syncUpdateBanner(reg){
-  const hasUpdate=hasRealWaitingUpdate(reg);
-  fxSignalUpdateWorker=hasUpdate ? reg.waiting : null;
+  const hasWorkerUpdate=hasRealWaitingUpdate(reg);
 
-  if(hasUpdate){
-    const status=document.getElementById("appUpdateStatus");
-    if(status) status.textContent="最新版の準備ができました";
-    showAppUpdateBanner();
+  if(hasWorkerUpdate){
+    fxSignalUpdateWorker=reg.waiting;
   }else{
-    hideAppUpdateBanner();
+    fxSignalUpdateWorker=null;
   }
+
+  // The visible banner is controlled by actual app version mismatch.
+  // A waiting worker alone is not enough, because mobile browsers can keep
+  // stale worker states around after an update.
+  refreshUpdateBannerByVersion();
 }
 
 
@@ -3102,34 +3132,30 @@ async function applyAppUpdate(){
   if(status) status.textContent="最新版を確認しています…";
 
   try{
-    if(!("serviceWorker" in navigator)) throw new Error("unsupported");
+    if("serviceWorker" in navigator){
+      const reg=fxSignalRegistration || await navigator.serviceWorker.getRegistration();
+      if(reg){
+        fxSignalRegistration=reg;
+        try{ await reg.update(); }catch{}
 
-    const reg=fxSignalRegistration || await navigator.serviceWorker.getRegistration();
-    if(!reg) throw new Error("registration missing");
-    fxSignalRegistration=reg;
-
-    // Always refresh registration state first.
-    try{ await reg.update(); }catch{}
-
-    const waiting=reg.waiting || fxSignalUpdateWorker;
-
-    if(waiting){
-      fxSignalUpdateWorker=waiting;
-      if(status) status.textContent="更新を適用しています…";
-      waiting.postMessage({type:"SKIP_WAITING"});
-      return;
+        if(reg.waiting){
+          if(status) status.textContent="更新を適用しています…";
+          reg.waiting.postMessage({type:"SKIP_WAITING"});
+          return;
+        }
+      }
     }
 
-    // No real waiting update means the banner is stale.
-    hideAppUpdateBanner();
-    if(status) status.textContent="すでに最新版です";
-    if(btn){
-      btn.disabled=false;
-      btn.textContent="更新する";
-    }
+    // Even if there is no waiting worker, version.json may say the HTML is old.
+    // Force a clean navigation reload to fetch the newest index.html.
+    if(status) status.textContent="最新版を読み込み直します…";
+    const url=new URL(location.href);
+    url.searchParams.set("_fxupdate",Date.now());
+    location.replace(url.toString());
+
   }catch(err){
     console.warn("App update failed:",err);
-    if(status) status.textContent="更新状態を確認できませんでした";
+    if(status) status.textContent="更新に失敗しました。もう一度お試しください。";
     if(btn){
       btn.disabled=false;
       btn.textContent="もう一度更新";
@@ -3147,7 +3173,9 @@ if("serviceWorker" in navigator){
     hideAppUpdateBanner();
     const status=document.getElementById("appUpdateStatus");
     if(status) status.textContent="更新完了。最新版を開きます…";
-    setTimeout(()=>location.reload(),300);
+    const url=new URL(location.href);
+    url.searchParams.set("_fxupdate",Date.now());
+    setTimeout(()=>location.replace(url.toString()),250);
   });
 }
 
@@ -3204,6 +3232,7 @@ window.addEventListener("beforeinstallprompt",e=>{
   e.preventDefault();
   deferredInstallPrompt=e;
   updatePwaInstallUi();
+refreshUpdateBannerByVersion();
 });
 
 window.addEventListener("appinstalled",()=>{
@@ -3248,6 +3277,7 @@ if("serviceWorker" in navigator){
 
       // Also check shortly after load because some mobile browsers settle state asynchronously.
       setTimeout(()=>syncUpdateBanner(reg),1200);
+      setTimeout(()=>refreshUpdateBannerByVersion(),1800);
     }catch(err){
       console.warn("Service Worker registration failed:",err);
       hideAppUpdateBanner();
