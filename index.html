@@ -2,706 +2,208 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FX SIGNAL Responsive Prototype</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FX SIGNAL</title>
 <style>
 :root{
-  --bg:#090f1b;
-  --panel:#121a2a;
-  --panel2:#172238;
-  --line:#293650;
-  --text:#f6f8fb;
-  --muted:#9ba9bd;
-  --blue:#6aa8ff;
-  --green:#3ddc97;
-  --yellow:#f1c75b;
-  --red:#ff6b6b;
-  --gold:#f4b84a;
+  --bg:#090f1b;--panel:#111a2a;--panel2:#172238;--line:#293650;
+  --text:#f7f9fc;--muted:#9ba9bd;--blue:#6aa8ff;--green:#42d392;
+  --yellow:#f1c75b;--red:#ff6b6b;--gold:#f4b84a
 }
 *{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;
-  background:linear-gradient(160deg,#07101c,#11192b);
-  color:var(--text);
-}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;background:linear-gradient(160deg,#07101c,#11192b);color:var(--text)}
 button,input{font:inherit}
-.app{
-  min-height:100vh;
-  display:grid;
-  grid-template-columns:240px 1fr;
-}
-.sidebar{
-  background:#0c1322;
-  border-right:1px solid var(--line);
-  padding:24px 16px;
-  position:sticky;
-  top:0;
-  height:100vh;
-}
+.app{min-height:100vh;display:grid;grid-template-columns:240px 1fr}
+.sidebar{background:#0c1322;border-right:1px solid var(--line);padding:24px 16px;position:sticky;top:0;height:100vh}
 .brand h1{margin:0;font-size:24px;letter-spacing:.06em}
 .brand small{display:block;color:var(--muted);margin-top:4px}
-.nav{
-  margin-top:28px;
-  display:grid;
-  gap:8px;
-}
-.nav button{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  width:100%;
-  border:0;
-  background:transparent;
-  color:#93a0b4;
-  padding:11px 12px;
-  border-radius:12px;
-  text-align:left;
-  cursor:pointer;
-}
-.nav button.active{
-  background:#17233a;
-  color:#e2ecff;
-}
-.sidebar-foot{
-  position:absolute;
-  left:16px; right:16px; bottom:20px;
-  color:var(--muted); font-size:12px;
-}
-.content{
-  padding:24px;
-  max-width:1400px;
-  width:100%;
-  margin:auto;
-}
-.topbar{
-  display:flex;
-  justify-content:space-between;
-  gap:16px;
-  align-items:center;
-  margin-bottom:18px;
-}
+.nav{margin-top:28px;display:grid;gap:8px}
+.nav button{display:flex;gap:10px;width:100%;border:0;background:transparent;color:#93a0b4;padding:11px 12px;border-radius:12px;text-align:left;cursor:pointer}
+.nav button.active{background:#17233a;color:#e2ecff}
+.sidebar-foot{position:absolute;left:16px;right:16px;bottom:20px;color:var(--muted);font-size:12px}
+.content{padding:24px;max-width:1400px;width:100%;margin:auto}
+.topbar{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:8px}
 .topbar h2{margin:0;font-size:24px}
-.topbar .sub{color:var(--muted);font-size:13px;margin-top:4px}
-.mode{
-  background:#17233a;
-  color:#bcd1f5;
-  border:1px solid #2c4267;
-  border-radius:999px;
-  padding:7px 10px;
-  font-size:12px;
-}
-.grid{
-  display:grid;
-  grid-template-columns:1.15fr .85fr;
-  gap:16px;
-}
-.card{
-  background:var(--panel);
-  border:1px solid var(--line);
-  border-radius:18px;
-  padding:16px;
-}
+.sub{color:var(--muted);font-size:13px;margin-top:4px}
+.mode{background:#17233a;color:#bcd1f5;border:1px solid #2c4267;border-radius:999px;padding:7px 11px;font-size:12px;cursor:pointer}
+.status{display:inline-flex;align-items:center;gap:7px;margin:0 0 16px;padding:7px 10px;border-radius:999px;background:#111a2b;border:1px solid #2f3d59;color:#9fb0c6;font-size:12px}
+.status.ok{color:#a7e7c8;border-color:#295843;background:#10251d}
+.status.error{color:#ffc1c1;border-color:#70333a;background:#2a1518}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--yellow)} .ok .dot{background:var(--green)} .error .dot{background:var(--red)}
+.grid{display:grid;grid-template-columns:1.08fr .92fr;gap:16px}
+.stack{display:grid;gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px}
 .card h3{margin:0 0 12px;font-size:15px}
-.market-head{
-  display:flex;
-  justify-content:space-between;
-  gap:12px;
-  align-items:center;
-  margin-bottom:12px;
-}
+.market-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px}
 .market-now{font-weight:900}
-.market-note{
-  font-size:11px;
-  color:#ffdba1;
-  background:#382711;
-  border:1px solid #5c421f;
-  border-radius:999px;
-  padding:5px 8px;
-}
-.markets{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:8px;
-}
-.market{
-  padding:11px 8px;
-  border-radius:13px;
-  background:#151f33;
-  border:1px solid #2a3752;
-  text-align:center;
-}
-.market .name{font-size:12px;font-weight:900}
-.market .state{font-size:11px;color:var(--muted);margin-top:3px}
-.market.open{background:#12261f;border-color:#285d48}
-.market.open .state{color:#92e9bf}
-.market.soon{background:#2a2314;border-color:#5b4a25}
-.market.soon .state{color:#f6d98c}
-
-.hero{
-  background:linear-gradient(145deg,#15233b,#1b2a45);
-  border:1px solid #2b425f;
-  border-radius:18px;
-  padding:16px;
-}
-.hero.rate{
-  background:linear-gradient(145deg,#2a2114,#3a2d16);
-  border-color:#6e5426;
-}
-.eyebrow{font-size:12px;color:var(--muted)}
-.hero.rate .eyebrow{color:#f5d995}
-.hero-top{
-  display:flex;
-  justify-content:space-between;
-  gap:16px;
-  margin-top:8px;
-}
-.hero h4{font-size:21px;margin:0 0 6px}
-.time{font-size:34px;font-weight:900}
-.tag{
-  align-self:flex-start;
-  border-radius:999px;
-  padding:6px 9px;
-  font-size:11px;
-  font-weight:900;
-}
-.tag.rate{background:#4a3412;color:#ffdb7e;border:1px solid #745523}
-.tag.hot{background:#4a1d26;color:#ffd1d1;border:1px solid #7b2e3a}
-.count{
-  margin-top:12px;
-  background:rgba(8,14,26,.55);
-  border-radius:12px;
-  padding:10px 12px;
-  font-size:13px;
-}
-
-.timeline{display:grid;gap:9px}
-.event{
-  display:grid;
-  grid-template-columns:70px 1fr auto;
-  gap:12px;
-  align-items:center;
-  padding:12px;
-  border-radius:14px;
-  border:1px solid var(--line);
-  background:#101827;
-}
+.overlap{font-size:11px;color:#ffdba1;background:#382711;border:1px solid #5c421f;border-radius:999px;padding:5px 8px}
+.markets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.market{padding:11px 8px;border-radius:13px;background:#151f33;border:1px solid #2a3752;text-align:center}
+.market .name{font-size:12px;font-weight:900} .market .state{font-size:11px;color:var(--muted);margin-top:3px}
+.market.open{background:#12261f;border-color:#285d48} .market.open .state{color:#92e9bf}
+.hero{background:linear-gradient(145deg,#15233b,#1b2a45);border:1px solid #2b425f;border-radius:18px;padding:16px}
+.hero.rate{background:linear-gradient(145deg,#2a2114,#3a2d16);border-color:#6e5426}
+.eyebrow{font-size:12px;color:var(--muted)} .rate .eyebrow{color:#f5d995}
+.hero-top{display:flex;justify-content:space-between;gap:16px;margin-top:8px}
+.hero h4{font-size:21px;margin:0 0 6px} .event-time{font-size:34px;font-weight:900}
+.tag{align-self:flex-start;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:900}
+.tag.rate{background:#4a3412;color:#ffdb7e;border:1px solid #745523} .tag.hot{background:#4a1d26;color:#ffd1d1;border:1px solid #7b2e3a}
+.count{margin-top:12px;background:rgba(8,14,26,.55);border-radius:12px;padding:10px 12px;font-size:13px}
+.timeline,.calendar-events{display:grid;gap:9px}
+.event{display:grid;grid-template-columns:68px 1fr auto;gap:11px;align-items:center;padding:12px;border-radius:14px;border:1px solid var(--line);background:#101827}
 .event.rate{background:#18150f;border-color:#5b4721}
-.event .when{font-weight:900}
-.event .title{font-weight:900;font-size:14px}
-.event .desc{font-size:12px;color:var(--muted);margin-top:3px}
-.bar{width:9px;height:38px;border-radius:8px}
-.red{background:var(--red)}
-.yellow{background:var(--yellow)}
-.gold{background:var(--gold)}
-
-.section-stack{display:grid;gap:16px}
+.when{font-weight:900} .title{font-weight:900;font-size:14px} .desc{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45}
+.bar{width:9px;height:38px;border-radius:8px} .red{background:var(--red)} .yellow{background:var(--yellow)} .gold{background:var(--gold)}
+.empty{padding:28px 12px;border:1px dashed #33415b;border-radius:14px;text-align:center;color:var(--muted)}
 .risk p,.simple p{margin:0;color:var(--muted);font-size:13px;line-height:1.6}
 .risk strong{display:block;margin-bottom:6px}
-
-.notify-card{display:grid;gap:0}
-.notify-head{
-  display:flex;justify-content:space-between;align-items:center;
-  padding-bottom:12px;border-bottom:1px solid var(--line)
-}
-.notify-title{font-size:18px;font-weight:900}
-.notify-sub{font-size:12px;color:var(--muted);margin-top:3px}
-.notify-group{padding:14px 0;border-bottom:1px solid var(--line)}
-.notify-label{font-size:12px;color:#a9b7cd;font-weight:900;margin-bottom:10px}
-.setting-row{
-  display:flex;justify-content:space-between;align-items:center;
-  gap:12px;padding:9px 0;
-}
-.setting-row strong{display:block;font-size:14px}
-.setting-row small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.calendar-layout{display:grid;grid-template-columns:1.3fr .7fr;gap:16px}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.actions{display:flex;gap:6px}
+.mini,.filter,.choice{border:1px solid #34445f;background:#121b2d;color:#a6b3c6;padding:8px 10px;border-radius:10px;cursor:pointer}
+.mini.primary,.filter.active,.choice.active{background:#19345f;color:#dce9ff;border-color:#4d78b8}
+.calendar-date{font-size:24px;font-weight:900;margin:18px 0 12px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.calendar-help{color:var(--muted);font-size:13px;line-height:1.6}
+.import-box{display:block;padding:22px 14px;border:1px dashed #4c658b;background:#101a2b;border-radius:14px;text-align:center;cursor:pointer}
+.import-box input{display:none} .import-box span{display:block;color:var(--muted);font-size:12px;margin-top:5px}
+.notify-group{padding:14px 0;border-bottom:1px solid var(--line)} .notify-label{font-size:12px;color:#a9b7cd;font-weight:900;margin-bottom:10px}
+.setting-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0}
+.setting-row strong{display:block;font-size:14px} .setting-row small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
 .setting-row input{width:20px;height:20px;accent-color:#6ea9ff}
 .choice-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.choice{
-  border:1px solid #34445f;
-  background:#121b2d;color:#9eacc0;
-  padding:10px;border-radius:11px;font-weight:900;
-}
-.choice.active{color:#dce9ff;background:#19345f;border-color:#4d78b8}
-.quiet-row{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
-.quiet-row span{
-  background:#111a2c;border:1px solid #33415b;
-  padding:10px;border-radius:10px;text-align:center;
-}
-.quiet-row span:nth-child(2){background:transparent;border:0;color:var(--muted)}
-.note{font-size:11px;color:var(--muted);line-height:1.5;margin-top:8px}
-.preview{
-  margin-top:14px;padding:13px;border-radius:14px;
-  background:#1b2433;border:1px solid #36435a;
-  font-size:12px;line-height:1.5;
-}
-.preview strong{display:block;font-size:13px;margin:3px 0}
-.preview-app{font-size:11px;color:#9eb1cc}
-
+body.beginner-hidden .beginner-only,body.beginner-hidden .glossary-nav{display:none!important}
 .mobile-nav{display:none}
 .hidden{display:none!important}
-
 @media(max-width:900px){
-  .app{display:block}
-  .sidebar{display:none}
-  .content{
-    padding:14px 14px 88px;
-    max-width:520px;
-  }
-  .topbar{padding-top:8px}
-  .grid{grid-template-columns:1fr}
-  .markets{grid-template-columns:repeat(3,1fr)}
-  .choice-grid{grid-template-columns:repeat(2,1fr)}
-  .mobile-nav{
-    display:grid;
-    grid-template-columns:repeat(5,1fr);
-    position:fixed;
-    left:0;right:0;bottom:0;
-    background:#0d1424;
-    border-top:1px solid var(--line);
-    padding:8px 6px 10px;
-    z-index:10;
-  }
-  .mobile-nav button{
-    border:0;background:transparent;color:#7f8da6;
-    font-size:11px;padding:7px 2px;border-radius:10px;
-  }
-  .mobile-nav button.active{background:#16213a;color:#d8e6ff}
-  .mobile-nav span{display:block;font-size:18px;margin-bottom:2px}
+  .app{display:block} .sidebar{display:none} .content{padding:14px 14px 88px;max-width:520px}
+  .grid,.calendar-layout{grid-template-columns:1fr} .choice-grid{grid-template-columns:repeat(2,1fr)}
+  .mobile-nav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;background:#0d1424;border-top:1px solid var(--line);padding:8px 6px 10px;z-index:10}
+  .mobile-nav button{border:0;background:transparent;color:#7f8da6;font-size:11px;padding:7px 2px;border-radius:10px}
+  .mobile-nav button.active{background:#16213a;color:#d8e6ff} .mobile-nav span{display:block;font-size:18px;margin-bottom:2px}
 }
-
-.beginner-hidden .beginner-only{display:none}
-.setting-row input[type="checkbox"]{cursor:pointer}
-
-
-.mode-button{
-  cursor:pointer;
-  transition:.18s ease;
-}
-.mode-button:hover{border-color:#5272a2;transform:translateY(-1px)}
-.calendar-layout{
-  display:grid;
-  grid-template-columns:1.3fr .7fr;
-  gap:16px;
-}
-.calendar-toolbar{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:12px;
-}
-.calendar-sub{font-size:12px;color:var(--muted);margin-top:4px}
-.calendar-actions{display:flex;gap:6px}
-.mini-btn{
-  border:1px solid #34445f;
-  background:#121b2d;
-  color:#c6d4e8;
-  padding:8px 11px;
-  border-radius:10px;
-  cursor:pointer;
-}
-.mini-btn.primary{background:#19345f;border-color:#4d78b8}
-.calendar-date{
-  font-size:24px;
-  font-weight:900;
-  margin:18px 0 12px;
-}
-.calendar-filters{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  margin-bottom:12px;
-}
-.filter-chip{
-  border:1px solid #34445f;
-  background:#121b2d;
-  color:#9eacc0;
-  padding:8px 10px;
-  border-radius:999px;
-  cursor:pointer;
-  font-size:12px;
-  font-weight:800;
-}
-.filter-chip.active{background:#19345f;color:#dce9ff;border-color:#4d78b8}
-.calendar-events{display:grid;gap:9px}
-.cal-event{
-  display:grid;
-  grid-template-columns:64px 1fr auto;
-  gap:10px;
-  align-items:center;
-  padding:12px;
-  border-radius:14px;
-  border:1px solid var(--line);
-  background:#101827;
-}
-.cal-event.rate{background:#18150f;border-color:#5b4721}
-.cal-event .cal-time{font-weight:900}
-.cal-event .cal-title{font-size:14px;font-weight:900}
-.cal-event .cal-meta{font-size:11px;color:var(--muted);margin-top:3px}
-.cal-empty{
-  padding:30px 14px;
-  border:1px dashed #33415b;
-  border-radius:14px;
-  text-align:center;
-  color:var(--muted);
-}
-.calendar-help{color:var(--muted);font-size:13px;line-height:1.6}
-.import-box{
-  display:block;
-  padding:22px 14px;
-  border:1px dashed #4c658b;
-  background:#101a2b;
-  border-radius:14px;
-  text-align:center;
-  cursor:pointer;
-}
-.import-box input{display:none}
-.import-box strong{display:block}
-.import-box span{display:block;color:var(--muted);font-size:12px;margin-top:5px}
-.import-format{
-  margin-top:14px;
-  font-size:12px;
-  color:var(--muted);
-}
-.import-format strong{display:block;color:#d8e3f3;margin-bottom:6px}
-.import-format code{
-  display:block;
-  overflow:auto;
-  padding:7px 8px;
-  border-radius:8px;
-  background:#0d1524;
-  color:#c5d5ed;
-  margin-top:5px;
-}
-.reset-btn{
-  width:100%;
-  margin-top:16px;
-  padding:10px;
-  border:1px solid #4a3c3c;
-  background:#231718;
-  color:#efb7b7;
-  border-radius:11px;
-  cursor:pointer;
-}
-.import-status{font-size:12px;color:#9fd8bc;margin-top:10px;min-height:18px}
-body.beginner-hidden .glossary-nav{display:none!important}
-@media(max-width:900px){
-  .calendar-layout{grid-template-columns:1fr}
-}
-
-
-.data-status{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  margin:-6px 0 16px;
-  padding:7px 10px;
-  border-radius:999px;
-  background:#111a2b;
-  border:1px solid #2f3d59;
-  color:#9fb0c6;
-  font-size:12px;
-}
-.status-dot{
-  width:8px;height:8px;border-radius:50%;
-  background:#f0c55c;
-}
-.data-status.ok{color:#a7e7c8;border-color:#295843;background:#10251d}
-.data-status.ok .status-dot{background:#42d392}
-.data-status.error{color:#ffc1c1;border-color:#70333a;background:#2a1518}
-.data-status.error .status-dot{background:#ff6b6b}
-.live-badge{
-  display:inline-block;
-  font-size:10px;
-  padding:3px 6px;
-  margin-left:6px;
-  border-radius:999px;
-  background:#16345d;
-  color:#bcd6ff;
-  vertical-align:middle;
-}
-
 </style>
 </head>
 <body>
 <div class="app">
-  <aside class="sidebar">
-    <div class="brand">
-      <h1>FX SIGNAL</h1>
-      <small>重要指標・金利発表アラート</small>
-    </div>
-    <div class="nav">
-      <button class="navbtn active" data-target="home">🏠 今日</button>
-      <button class="navbtn" data-target="calendar">📅 カレンダー</button>
-      <button class="navbtn" data-target="alerts">🔔 通知</button>
-      <button class="navbtn glossary-nav" data-target="glossary">📘 用語集</button>
-      <button class="navbtn" data-target="settings">⚙️ 設定</button>
-    </div>
-    <div class="sidebar-foot">Web / iPhone / Android 共通設計</div>
-  </aside>
+<aside class="sidebar">
+  <div class="brand"><h1>FX SIGNAL</h1><small>重要指標・金利発表アラート</small></div>
+  <div class="nav">
+    <button class="navbtn active" data-target="home">🏠 今日</button>
+    <button class="navbtn" data-target="calendar">📅 カレンダー</button>
+    <button class="navbtn" data-target="alerts">🔔 通知</button>
+    <button class="navbtn glossary-nav" data-target="glossary">📘 用語集</button>
+    <button class="navbtn" data-target="settings">⚙️ 設定</button>
+  </div>
+  <div class="sidebar-foot">Live data via Supabase</div>
+</aside>
 
-  <main class="content">
-    <div class="topbar">
-      <div>
-        <h2>FX SIGNAL</h2>
-        <div class="sub">今日の市場状況と重要イベント</div>
-      </div>
-      <button id="modeBadge" class="mode mode-button" type="button">初心者モード ON</button>
-    </div>
+<main class="content">
+  <div class="topbar">
+    <div><h2>FX SIGNAL</h2><div class="sub">今日の市場状況と重要イベント</div></div>
+    <button id="modeBadge" class="mode">初心者モード ON</button>
+  </div>
+  <div id="dataStatus" class="status"><span class="dot"></span><span id="statusText">Supabaseに接続中...</span></div>
 
-    <div id="dataStatus" class="data-status">
-      <span class="status-dot"></span>
-      <span id="dataStatusText">Supabaseに接続中...</span>
-    </div>
-
-    <section id="home">
-      <div class="grid">
-        <div class="section-stack">
-          <div class="card">
-            <div class="market-head">
-              <div class="market-now">現在：🇯🇵 東京時間</div>
-              <div class="market-note">市場状況を自動判定</div>
-            </div>
-            <div class="markets">
-              <div class="market open"><div class="name">🇯🇵 東京</div><div class="state">OPEN</div></div>
-              <div class="market soon"><div class="name">🇪🇺 欧州</div><div class="state">このあと</div></div>
-              <div class="market"><div class="name">🇺🇸 NY</div><div class="state">CLOSED</div></div>
-            </div>
-          </div>
-
-          <div class="hero rate">
-            <div class="eyebrow">次の政策金利イベント</div>
-            <div class="hero-top">
-              <div>
-                <h4>🇺🇸 FOMC 政策金利発表</h4>
-                <div class="time">03:00</div>
-              </div>
-              <div class="tag rate">🏦 金利</div>
-            </div>
-            <div class="count">あと <b>17時間30分</b>　<span class="beginner-only">USD/JPYなどに大きく影響する可能性があります</span></div>
-          </div>
-
-          <div class="hero">
-            <div class="eyebrow">次の重要指標</div>
-            <div class="hero-top">
-              <div>
-                <h4>🇺🇸 米国 CPI</h4>
-                <div class="time">21:30</div>
-              </div>
-              <div class="tag hot">🔥 重要度3</div>
-            </div>
-            <div class="count">あと <b>12時間00分</b>　<span class="beginner-only">物価動向を見る重要指標です</span></div>
-          </div>
-        </div>
-
-        <div class="section-stack">
-          <div class="card">
-            <h3>今日の予定 <span id="liveBadge" class="live-badge">Supabase</span></h3>
-            <div id="homeTimeline" class="timeline">
-              <div class="event">
-                <div class="when">16:30</div>
-                <div><div class="title">🇬🇧 英国 PMI</div><div class="desc"><span class="beginner-only">景気の強さを見る指標</span></div></div>
-                <div class="bar yellow"></div>
-              </div>
-              <div class="event">
-                <div class="when">21:30</div>
-                <div><div class="title">🇺🇸 米国 CPI</div><div class="desc"><span class="beginner-only">物価の上がり方を見る重要指標</span></div></div>
-                <div class="bar red"></div>
-              </div>
-              <div class="event">
-                <div class="when">23:00</div>
-                <div><div class="title">🇺🇸 FRB 要人発言</div><div class="desc"><span class="beginner-only">金利見通しに影響する可能性</span></div></div>
-                <div class="bar red"></div>
-              </div>
-              <div class="event rate">
-                <div class="when">03:00</div>
-                <div><div class="title">🏦 🇺🇸 FOMC 政策金利発表</div><div class="desc"><span class="beginner-only">通常指標とは別枠で表示</span></div></div>
-                <div class="bar gold"></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card risk">
-            <h3>今日の注意時間</h3>
-            <strong>⚠️ 21:20〜翌3:30 は重要イベント集中</strong>
-            <p>欧州〜NY時間にかけて重要指標と政策金利イベントが続きます。市場重複時間には専用表示を出す想定です。</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="calendar" class="hidden">
-      <div class="calendar-layout">
+  <section id="home">
+    <div class="grid">
+      <div class="stack">
         <div class="card">
-          <div class="calendar-toolbar">
-            <div>
-              <h3 style="margin:0">予定カレンダー</h3>
-              <div class="calendar-sub">経済指標・金利発表・要人発言を日付ごとに確認</div>
-            </div>
-            <div class="calendar-actions">
-              <button id="prevDay" class="mini-btn" type="button">←</button>
-              <button id="todayBtn" class="mini-btn primary" type="button">今日</button>
-              <button id="nextDay" class="mini-btn" type="button">→</button>
-            </div>
+          <div class="market-head"><div id="marketNow" class="market-now">市場時間を判定中...</div><div id="overlapBadge" class="overlap">自動判定</div></div>
+          <div class="markets">
+            <div id="tokyoMarket" class="market"><div class="name">🇯🇵 東京</div><div class="state">--</div></div>
+            <div id="londonMarket" class="market"><div class="name">🇪🇺 欧州</div><div class="state">--</div></div>
+            <div id="nyMarket" class="market"><div class="name">🇺🇸 NY</div><div class="state">--</div></div>
           </div>
-
-          <div id="calendarDate" class="calendar-date"></div>
-
-          <div class="calendar-filters">
-            <button class="filter-chip active" data-filter="all" type="button">すべて</button>
-            <button class="filter-chip" data-filter="indicator" type="button">📊 指標</button>
-            <button class="filter-chip" data-filter="rate" type="button">🏦 金利</button>
-            <button class="filter-chip" data-filter="speech" type="button">🎙 要人発言</button>
-          </div>
-
-          <div id="calendarEvents" class="calendar-events"></div>
         </div>
 
+        <div id="rateHero" class="hero rate">
+          <div class="eyebrow">次の政策金利イベント</div>
+          <div class="hero-top">
+            <div><h4 id="rateTitle">読み込み中...</h4><div id="rateTime" class="event-time">--:--</div></div>
+            <div class="tag rate">🏦 金利</div>
+          </div>
+          <div id="rateCount" class="count">Supabaseから取得しています</div>
+        </div>
+
+        <div class="hero">
+          <div class="eyebrow">次の重要指標</div>
+          <div class="hero-top">
+            <div><h4 id="indicatorTitle">読み込み中...</h4><div id="indicatorTime" class="event-time">--:--</div></div>
+            <div class="tag hot">🔥 重要度3</div>
+          </div>
+          <div id="indicatorCount" class="count">Supabaseから取得しています</div>
+        </div>
+      </div>
+
+      <div class="stack">
         <div class="card">
-          <h3>予定を取り込む</h3>
-          <p class="calendar-help">
-            CSV または ICS ファイルを読み込んで、この端末上の予定一覧に追加できます。
-            Web版・アプリ版では将来的にサーバー同期する想定です。
-          </p>
-
-          <label class="import-box">
-            <input id="calendarImport" type="file" accept=".csv,.ics,text/csv,text/calendar">
-            <strong>📥 CSV / ICS を選択</strong>
-            <span>クリックしてファイルを読み込む</span>
-          </label>
-
-          <div class="import-format">
-            <strong>CSV形式の例</strong>
-            <code>date,time,type,country,title,importance</code>
-            <code>2026-10-05,21:30,indicator,US,米国 CPI,3</code>
-          </div>
-
-          <div class="import-format">
-            <strong>type の種類</strong>
-            <div class="pillrow">
-              <div class="pill">indicator = 経済指標</div>
-              <div class="pill">rate = 政策金利</div>
-              <div class="pill">speech = 要人発言</div>
-            </div>
-          </div>
-
-          <button id="resetCalendar" class="reset-btn" type="button">サンプル予定に戻す</button>
-          <div id="importStatus" class="import-status"></div>
+          <h3>今日の予定 <span style="font-size:10px;padding:3px 6px;border-radius:999px;background:#16345d;color:#bcd6ff">LIVE</span></h3>
+          <div id="homeTimeline" class="timeline"><div class="empty">読み込み中...</div></div>
+        </div>
+        <div class="card risk">
+          <h3>今日の注意時間</h3>
+          <strong id="riskTitle">予定を確認中...</strong>
+          <p id="riskText">重要イベントの時間帯を自動でまとめます。</p>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section id="alerts" class="hidden">
-      <div class="card notify-card">
-        <div class="notify-head">
-          <div>
-            <div class="notify-title">通知設定</div>
-            <div class="notify-sub">必要なものだけ受け取る</div>
-          </div>
-          <label><input type="checkbox" checked> 通知ON</label>
-        </div>
-
-        <div class="notify-group">
-          <div class="notify-label">通知するイベント</div>
-          <label class="setting-row">
-            <div><strong>🔥 重要度3の経済指標</strong><small>CPI・雇用統計など</small></div>
-            <input type="checkbox" checked>
-          </label>
-          <label class="setting-row">
-            <div><strong>🏦 政策金利発表</strong><small>FOMC・日銀・ECB・BOEなど</small></div>
-            <input type="checkbox" checked>
-          </label>
-          <label class="setting-row">
-            <div><strong>🎙 要人発言</strong><small>FRB・ECB・日銀総裁など</small></div>
-            <input type="checkbox">
-          </label>
-        </div>
-
-        <div class="notify-group">
-          <div class="notify-label">いつ通知する？</div>
-          <div class="choice-grid">
-            <button class="choice active">60分前</button>
-            <button class="choice active">30分前</button>
-            <button class="choice active">5分前</button>
-            <button class="choice">発表直前</button>
-          </div>
-        </div>
-
-        <div class="notify-group">
-          <div class="notify-label">発表後</div>
-          <label class="setting-row">
-            <div><strong>結果を通知</strong><small>予想・結果・前回を表示</small></div>
-            <input type="checkbox" checked>
-          </label>
-          <label class="setting-row">
-            <div><strong>サプライズ時に強調</strong><small>予想との差が大きい場合</small></div>
-            <input type="checkbox" checked>
-          </label>
-        </div>
-
-        <div class="notify-group">
-          <div class="notify-label">静かな時間</div>
-          <div class="quiet-row"><span>23:00</span><span>〜</span><span>07:00</span></div>
-          <div class="note">政策金利のみ静かな時間でも通知する設定を追加できます。</div>
-        </div>
-
-        <div class="preview">
-          <div class="preview-app">FX SIGNAL</div>
-          <strong>🏦 あと30分でFOMC政策金利発表</strong>
-          <div>03:00予定 ・ USD/JPYなどに影響する可能性があります</div>
-        </div>
-      </div>
-    </section>
-
-    <section id="glossary" class="hidden">
-      <div class="card simple"><h3>用語集</h3><p>CPI / 雇用統計 / FOMC / 政策金利 / PMI / FRBなどを短く解説します。</p></div>
-    </section>
-
-    <section id="settings" class="hidden">
+  <section id="calendar" class="hidden">
+    <div class="calendar-layout">
       <div class="card">
-        <h3>設定</h3>
-
-        <div class="notify-group">
-          <div class="notify-label">表示モード</div>
-          <label class="setting-row">
-            <div>
-              <strong>初心者モード</strong>
-              <small>指標や金利イベントに、やさしい説明文を表示します</small>
-            </div>
-            <input id="beginnerToggle" type="checkbox" checked>
-          </label>
+        <div class="toolbar">
+          <div><h3 style="margin:0">予定カレンダー</h3><div class="sub">Supabaseの実データを日本時間で表示</div></div>
+          <div class="actions"><button id="prevDay" class="mini">←</button><button id="todayBtn" class="mini primary">今日</button><button id="nextDay" class="mini">→</button></div>
         </div>
-
-        <div class="notify-group">
-          <div class="notify-label">表示内容</div>
-          <label class="setting-row">
-            <div>
-              <strong>市場時間を表示</strong>
-              <small>東京・欧州・NYのOPEN状況を表示</small>
-            </div>
-            <input type="checkbox" checked>
-          </label>
-          <label class="setting-row">
-            <div>
-              <strong>重要度2も表示</strong>
-              <small>重要度3だけでなく、中程度の指標も表示</small>
-            </div>
-            <input type="checkbox" checked>
-          </label>
+        <div id="calendarDate" class="calendar-date"></div>
+        <div class="filters">
+          <button class="filter active" data-filter="all">すべて</button>
+          <button class="filter" data-filter="indicator">📊 指標</button>
+          <button class="filter" data-filter="rate">🏦 金利</button>
+          <button class="filter" data-filter="speech">🎙 要人発言</button>
         </div>
-
-        <div class="notify-group">
-          <div class="notify-label">同期</div>
-          <label class="setting-row">
-            <div>
-              <strong>Web / アプリ間で設定を同期</strong>
-              <small>ログイン時に通知・表示設定を共通化</small>
-            </div>
-            <input type="checkbox" checked>
-          </label>
-        </div>
+        <div id="calendarEvents" class="calendar-events"></div>
       </div>
-    </section>
-  </main>
+      <div class="card">
+        <h3>データについて</h3>
+        <p class="calendar-help">予定はSupabaseの <b>events</b> テーブルから自動取得します。XOOMAR同期後にページを更新すると反映されます。</p>
+        <button id="refreshData" class="mini primary" style="width:100%;margin-top:12px">↻ Supabaseから再読み込み</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="alerts" class="hidden">
+    <div class="card">
+      <h3>通知設定</h3>
+      <div class="notify-group">
+        <div class="notify-label">通知するイベント</div>
+        <label class="setting-row"><div><strong>🔥 重要度3の経済指標</strong><small>CPI・雇用統計など</small></div><input type="checkbox" checked></label>
+        <label class="setting-row"><div><strong>🏦 政策金利発表</strong><small>FOMCなど</small></div><input type="checkbox" checked></label>
+        <label class="setting-row"><div><strong>🎙 要人発言</strong><small>中央銀行関係者など</small></div><input type="checkbox"></label>
+      </div>
+      <div class="notify-group">
+        <div class="notify-label">いつ通知する？</div>
+        <div class="choice-grid"><button class="choice active">60分前</button><button class="choice active">30分前</button><button class="choice active">5分前</button><button class="choice">発表直前</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="glossary" class="hidden">
+    <div class="card simple"><h3>用語集</h3><p>CPI / 雇用統計 / FOMC / 政策金利 / PMI / FRBなどを短く解説します。</p></div>
+  </section>
+
+  <section id="settings" class="hidden">
+    <div class="card">
+      <h3>設定</h3>
+      <div class="notify-group">
+        <div class="notify-label">表示モード</div>
+        <label class="setting-row"><div><strong>初心者モード</strong><small>やさしい補足説明と用語集を表示</small></div><input id="beginnerToggle" type="checkbox" checked></label>
+      </div>
+    </div>
+  </section>
+</main>
 </div>
 
 <nav class="mobile-nav">
@@ -713,888 +215,153 @@ body.beginner-hidden .glossary-nav{display:none!important}
 </nav>
 
 <script>
-const sections=[...document.querySelectorAll('main section')];
-const allNav=[...document.querySelectorAll('[data-target]')];
+const SUPABASE_URL = "https://sbudokmgkfvrfgslfjyq.supabase.co";
+const SUPABASE_KEY = "sb_publishable_oOmD_eZmTT6ON4BFiavPjQ_xZqe0ivR";
+let events = [];
+let selectedDate = new Date();
+let activeFilter = "all";
 
-function show(target){
-  if(target === 'glossary' && document.body.classList.contains('beginner-hidden')){
-    target = 'home';
+const flagMap={US:"🇺🇸",JP:"🇯🇵",GB:"🇬🇧",EU:"🇪🇺",AU:"🇦🇺",CA:"🇨🇦",NZ:"🇳🇿",CH:"🇨🇭"};
+
+function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function toUtcDate(e){return new Date(`${e.date}T${String(e.time||"00:00:00").slice(0,8)}Z`)}
+function jstParts(date){
+  const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(date);
+  const o=Object.fromEntries(parts.map(p=>[p.type,p.value]));
+  return {date:`${o.year}-${o.month}-${o.day}`,time:`${o.hour}:${o.minute}`};
+}
+function todayJst(){return jstParts(new Date()).date}
+function countryFlag(c){return flagMap[(c||"").toUpperCase()]||"🌐"}
+function typePrefix(t){return t==="rate"?"🏦 ":t==="speech"?"🎙 ":""}
+function barClass(e){return e.type==="rate"?"gold":Number(e.importance)>=3?"red":"yellow"}
+function normalize(row){return {...row,importance:Number(row.importance||2),type:row.type||"indicator",country:(row.country||"").toUpperCase()}}
+
+function formatCountdown(date){
+  const diff=date-Date.now();
+  if(diff<=0) return "発表時刻を迎えています";
+  const mins=Math.floor(diff/60000);
+  const d=Math.floor(mins/1440), h=Math.floor((mins%1440)/60), m=mins%60;
+  if(d>0) return `あと ${d}日${h}時間`;
+  if(h>0) return `あと ${h}時間${m}分`;
+  return `あと ${m}分`;
+}
+
+function renderHero(kind){
+  const pool=events
+    .filter(e=>kind==="rate"?e.type==="rate":(e.type==="indicator"&&e.importance>=3))
+    .map(e=>({e,date:toUtcDate(e)}))
+    .filter(x=>x.date>Date.now()-5*60*1000)
+    .sort((a,b)=>a.date-b.date);
+  const next=pool[0];
+  const prefix=kind==="rate"?"rate":"indicator";
+  if(!next){
+    document.getElementById(prefix+"Title").textContent="予定なし";
+    document.getElementById(prefix+"Time").textContent="--:--";
+    document.getElementById(prefix+"Count").textContent="現在取得済みの予定にはありません";
+    return;
   }
-  sections.forEach(s=>s.classList.toggle('hidden',s.id!==target));
-  allNav.forEach(b=>b.classList.toggle('active',b.dataset.target===target));
+  const p=jstParts(next.date);
+  document.getElementById(prefix+"Title").textContent=`${countryFlag(next.e.country)} ${next.e.title}`;
+  document.getElementById(prefix+"Time").textContent=p.time;
+  const details=[];
+  if(next.e.forecast) details.push(`予想 ${next.e.forecast}`);
+  if(next.e.previous) details.push(`前回 ${next.e.previous}`);
+  document.getElementById(prefix+"Count").innerHTML=`<b>${formatCountdown(next.date)}</b>${details.length?"　"+details.join(" / "):""}`;
 }
-allNav.forEach(b=>b.addEventListener('click',()=>show(b.dataset.target)));
 
-document.querySelectorAll('.choice').forEach(btn=>{
-  btn.addEventListener('click',()=>btn.classList.toggle('active'));
-});
-
-const beginnerToggle = document.getElementById('beginnerToggle');
-const modeBadge = document.getElementById('modeBadge');
-
-function applyBeginnerMode(enabled){
-  document.body.classList.toggle('beginner-hidden', !enabled);
-  if(modeBadge){
-    modeBadge.textContent = enabled ? '初心者モード ON' : '初心者モード OFF';
-    modeBadge.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+function renderHome(){
+  renderHero("rate"); renderHero("indicator");
+  const key=todayJst();
+  const list=events.map(e=>({e,p:jstParts(toUtcDate(e)),d:toUtcDate(e)})).filter(x=>x.p.date===key).sort((a,b)=>a.d-b.d);
+  const wrap=document.getElementById("homeTimeline");
+  if(!list.length){wrap.innerHTML='<div class="empty">今日の予定はありません</div>';}
+  else {
+    wrap.innerHTML=list.map(x=>{
+      const e=x.e;
+      const vals=[e.actual?`結果 ${escapeHtml(e.actual)}`:"",e.forecast?`予想 ${escapeHtml(e.forecast)}`:"",e.previous?`前回 ${escapeHtml(e.previous)}`:""].filter(Boolean).join(" / ");
+      return `<div class="event ${e.type==="rate"?"rate":""}">
+        <div class="when">${x.p.time}</div>
+        <div><div class="title">${typePrefix(e.type)}${countryFlag(e.country)} ${escapeHtml(e.title)}</div>
+        <div class="desc">${vals||'<span class="beginner-only">詳細値は発表後に更新されます</span>'}</div></div>
+        <div class="bar ${barClass(e)}"></div></div>`;
+    }).join("");
   }
-  if(beginnerToggle){
-    beginnerToggle.checked = enabled;
+  const high=list.filter(x=>x.e.importance>=3||x.e.type==="rate");
+  if(high.length){
+    const first=high[0].p.time,last=high[high.length-1].p.time;
+    document.getElementById("riskTitle").textContent=`⚠️ ${first}〜${last} 重要イベントあり`;
+    document.getElementById("riskText").textContent=`今日は重要イベントが${high.length}件あります。発表前後の急変動に注意。`;
+  } else {
+    document.getElementById("riskTitle").textContent="大きな重要イベントは少なめ";
+    document.getElementById("riskText").textContent="現在取得している予定では、重要度3・政策金利イベントはありません。";
   }
-  localStorage.setItem('fxsignal_beginner_mode', enabled ? 'on' : 'off');
-
-  if(!enabled && !document.getElementById('glossary').classList.contains('hidden')){
-    show('home');
-  }
 }
 
-const savedMode = localStorage.getItem('fxsignal_beginner_mode');
-applyBeginnerMode(savedMode !== 'off');
-
-beginnerToggle?.addEventListener('change', e=>{
-  applyBeginnerMode(e.target.checked);
-});
-modeBadge?.addEventListener('click', ()=>{
-  applyBeginnerMode(document.body.classList.contains('beginner-hidden'));
-});
-
-/* Calendar */
-const sampleCalendarEvents = [
-  {date:'2026-10-05',time:'16:30',type:'indicator',country:'GB',title:'英国 PMI',importance:2},
-  {date:'2026-10-05',time:'21:30',type:'indicator',country:'US',title:'米国 CPI',importance:3},
-  {date:'2026-10-05',time:'23:00',type:'speech',country:'US',title:'FRB 要人発言',importance:3},
-  {date:'2026-10-06',time:'03:00',type:'rate',country:'US',title:'FOMC 政策金利発表',importance:3},
-  {date:'2026-10-06',time:'12:30',type:'speech',country:'JP',title:'日銀総裁 発言',importance:2},
-  {date:'2026-10-07',time:'18:00',type:'indicator',country:'EU',title:'ユーロ圏 小売売上高',importance:2}
-];
-
-let calendarEvents = [];
-try{
-  calendarEvents = JSON.parse(localStorage.getItem('fxsignal_calendar_events') || 'null') || sampleCalendarEvents;
-}catch(e){
-  calendarEvents = sampleCalendarEvents;
-}
-
-let selectedDate = new Date('2026-10-05T00:00:00');
-let activeFilter = 'all';
-
-const flagMap = {US:'🇺🇸',JP:'🇯🇵',GB:'🇬🇧',EU:'🇪🇺',AU:'🇦🇺',CA:'🇨🇦',NZ:'🇳🇿',CH:'🇨🇭'};
-const typeLabel = {indicator:'経済指標',rate:'政策金利',speech:'要人発言'};
-
-function formatDate(d){
-  return d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
-}
-function ymd(d){
-  const y=d.getFullYear();
-  const m=String(d.getMonth()+1).padStart(2,'0');
-  const day=String(d.getDate()).padStart(2,'0');
-  return `${y}-${m}-${day}`;
-}
-function saveCalendar(){
-  localStorage.setItem('fxsignal_calendar_events', JSON.stringify(calendarEvents));
-}
+function dateKeyLocal(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
 function renderCalendar(){
-  document.getElementById('calendarDate').textContent = formatDate(selectedDate);
-  const dateKey = ymd(selectedDate);
-  const list = calendarEvents
-    .filter(e=>e.date===dateKey && (activeFilter==='all' || e.type===activeFilter))
-    .sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
-
-  const wrap = document.getElementById('calendarEvents');
-  if(!list.length){
-    wrap.innerHTML = '<div class="cal-empty">この日の予定はありません</div>';
-    return;
-  }
-
-  wrap.innerHTML = list.map(e=>{
-    const flag = flagMap[(e.country||'').toUpperCase()] || '🌐';
-    const cls = e.type==='rate' ? 'cal-event rate' : 'cal-event';
-    const barClass = e.type==='rate' ? 'gold' : (Number(e.importance)>=3 ? 'red' : 'yellow');
-    return `
-      <div class="${cls}">
-        <div class="cal-time">${e.time || '--:--'}</div>
-        <div>
-          <div class="cal-title">${e.type==='rate'?'🏦 ':e.type==='speech'?'🎙 ':''}${flag} ${escapeHtml(e.title||'予定')}</div>
-          <div class="cal-meta">${typeLabel[e.type]||'予定'} ・ 重要度 ${e.importance||'-'}</div>
-        </div>
-        <div class="bar ${barClass}"></div>
-      </div>`;
-  }).join('');
-}
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  document.getElementById("calendarDate").textContent=selectedDate.toLocaleDateString("ja-JP",{year:"numeric",month:"long",day:"numeric",weekday:"short"});
+  const key=dateKeyLocal(selectedDate);
+  const list=events.map(e=>({e,p:jstParts(toUtcDate(e)),d:toUtcDate(e)}))
+    .filter(x=>x.p.date===key&&(activeFilter==="all"||x.e.type===activeFilter))
+    .sort((a,b)=>a.d-b.d);
+  const wrap=document.getElementById("calendarEvents");
+  if(!list.length){wrap.innerHTML='<div class="empty">この日の予定はありません</div>';return}
+  wrap.innerHTML=list.map(x=>`<div class="event ${x.e.type==="rate"?"rate":""}">
+    <div class="when">${x.p.time}</div>
+    <div><div class="title">${typePrefix(x.e.type)}${countryFlag(x.e.country)} ${escapeHtml(x.e.title)}</div>
+    <div class="desc">重要度 ${x.e.importance}${x.e.actual?` / 結果 ${escapeHtml(x.e.actual)}`:""}${x.e.forecast?` / 予想 ${escapeHtml(x.e.forecast)}`:""}</div></div>
+    <div class="bar ${barClass(x.e)}"></div></div>`).join("");
 }
 
-document.getElementById('prevDay')?.addEventListener('click',()=>{
-  selectedDate.setDate(selectedDate.getDate()-1);
-  
-const SUPABASE_URL = 'https://sbudokmgkfvrfgslfjyq.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_oOmD_eZmTT6ON4BFiavPjQ_xZqe0ivR';
-
-function normalizeEvent(row){
-  return {
-    id: row.id,
-    date: row.date || '',
-    time: row.time ? String(row.time).slice(0,5) : '',
-    type: row.type || 'indicator',
-    country: (row.country || '').toUpperCase(),
-    title: row.title || '予定',
-    importance: Number(row.importance || 2),
-    actual: row.actual || '',
-    forecast: row.forecast || '',
-    previous: row.previous || ''
-  };
-}
-
-function renderHomeTimeline(events){
-  const wrap = document.getElementById('homeTimeline');
-  if(!wrap) return;
-  const todayKey = '2026-10-05';
-  const todayEvents = events
-    .filter(e => e.date === todayKey)
-    .sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
-
-  if(!todayEvents.length){
-    wrap.innerHTML = '<div class="cal-empty">Supabaseに今日の予定はまだありません</div>';
-    return;
-  }
-
-  wrap.innerHTML = todayEvents.map(e=>{
-    const flag = flagMap[e.country] || '🌐';
-    const cls = e.type === 'rate' ? 'event rate' : 'event';
-    const barClass = e.type === 'rate' ? 'gold' : (e.importance >= 3 ? 'red' : 'yellow');
-    const prefix = e.type === 'rate' ? '🏦 ' : e.type === 'speech' ? '🎙 ' : '';
-    const beginnerText = e.type === 'rate'
-      ? '政策金利の発表'
-      : e.type === 'speech'
-      ? '要人発言'
-      : '経済指標';
-
-    return `
-      <div class="${cls}">
-        <div class="when">${e.time || '--:--'}</div>
-        <div>
-          <div class="title">${prefix}${flag} ${escapeHtml(e.title)}</div>
-          <div class="desc"><span class="beginner-only">${beginnerText}</span></div>
-        </div>
-        <div class="bar ${barClass}"></div>
-      </div>`;
-  }).join('');
-}
-
-async function loadSupabaseEvents(){
-  const status = document.getElementById('dataStatus');
-  const statusText = document.getElementById('dataStatusText');
-
+async function loadData(){
+  const box=document.getElementById("dataStatus"), text=document.getElementById("statusText");
+  box.className="status"; text.textContent="Supabaseに接続中...";
   try{
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/events?select=*&order=date.asc,time.asc`,
-      {
-        headers: {
-          apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`
-        }
-      }
-    );
-
-    if(!res.ok){
-      throw new Error(`HTTP ${res.status}`);
-    }
-
-    const rows = await res.json();
-    const liveEvents = rows.map(normalizeEvent);
-
-    if(liveEvents.length){
-      calendarEvents = liveEvents;
-      renderCalendar();
-      renderHomeTimeline(liveEvents);
-    } else {
-      renderHomeTimeline([]);
-    }
-
-    status?.classList.remove('error');
-    status?.classList.add('ok');
-    if(statusText) statusText.textContent = `Supabase接続済み・${liveEvents.length}件取得`;
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/events?select=*&order=date.asc,time.asc`,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`}});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    events=(await r.json()).map(normalize);
+    box.classList.add("ok"); text.textContent=`Supabase接続済み・${events.length}件取得`;
+    renderHome(); renderCalendar();
   }catch(err){
-    status?.classList.remove('ok');
-    status?.classList.add('error');
-    if(statusText) statusText.textContent = 'Supabase接続エラー';
-    console.error(err);
+    box.classList.add("error"); text.textContent=`接続エラー: ${err.message}`;
+    document.getElementById("homeTimeline").innerHTML='<div class="empty">Supabaseから予定を取得できませんでした</div>';
   }
 }
 
-renderCalendar();
-loadSupabaseEvents();
-});
-document.getElementById('nextDay')?.addEventListener('click',()=>{
-  selectedDate.setDate(selectedDate.getDate()+1);
-  
-const SUPABASE_URL = 'https://sbudokmgkfvrfgslfjyq.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_oOmD_eZmTT6ON4BFiavPjQ_xZqe0ivR';
-
-function normalizeEvent(row){
-  return {
-    id: row.id,
-    date: row.date || '',
-    time: row.time ? String(row.time).slice(0,5) : '',
-    type: row.type || 'indicator',
-    country: (row.country || '').toUpperCase(),
-    title: row.title || '予定',
-    importance: Number(row.importance || 2),
-    actual: row.actual || '',
-    forecast: row.forecast || '',
-    previous: row.previous || ''
-  };
+function zoneHour(zone){
+  const parts=new Intl.DateTimeFormat("en-US",{timeZone:zone,hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(new Date());
+  const o=Object.fromEntries(parts.map(p=>[p.type,p.value])); return Number(o.hour)+Number(o.minute)/60;
+}
+function setMarket(id,open){
+  const el=document.getElementById(id); el.classList.toggle("open",open); el.querySelector(".state").textContent=open?"OPEN":"CLOSED";
+}
+function updateMarkets(){
+  const tok=zoneHour("Asia/Tokyo"), lon=zoneHour("Europe/London"), ny=zoneHour("America/New_York");
+  const t=tok>=9&&tok<18, l=lon>=8&&lon<17, n=ny>=8&&ny<17;
+  setMarket("tokyoMarket",t); setMarket("londonMarket",l); setMarket("nyMarket",n);
+  const open=[t?"🇯🇵 東京":null,l?"🇪🇺 欧州":null,n?"🇺🇸 NY":null].filter(Boolean);
+  document.getElementById("marketNow").textContent=open.length?`現在：${open.join(" × ")}`:"現在：主要市場クローズ";
+  document.getElementById("overlapBadge").textContent=open.length>=2?"🔥 市場重複中":"市場状況を自動判定";
 }
 
-function renderHomeTimeline(events){
-  const wrap = document.getElementById('homeTimeline');
-  if(!wrap) return;
-  const todayKey = '2026-10-05';
-  const todayEvents = events
-    .filter(e => e.date === todayKey)
-    .sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
-
-  if(!todayEvents.length){
-    wrap.innerHTML = '<div class="cal-empty">Supabaseに今日の予定はまだありません</div>';
-    return;
-  }
-
-  wrap.innerHTML = todayEvents.map(e=>{
-    const flag = flagMap[e.country] || '🌐';
-    const cls = e.type === 'rate' ? 'event rate' : 'event';
-    const barClass = e.type === 'rate' ? 'gold' : (e.importance >= 3 ? 'red' : 'yellow');
-    const prefix = e.type === 'rate' ? '🏦 ' : e.type === 'speech' ? '🎙 ' : '';
-    const beginnerText = e.type === 'rate'
-      ? '政策金利の発表'
-      : e.type === 'speech'
-      ? '要人発言'
-      : '経済指標';
-
-    return `
-      <div class="${cls}">
-        <div class="when">${e.time || '--:--'}</div>
-        <div>
-          <div class="title">${prefix}${flag} ${escapeHtml(e.title)}</div>
-          <div class="desc"><span class="beginner-only">${beginnerText}</span></div>
-        </div>
-        <div class="bar ${barClass}"></div>
-      </div>`;
-  }).join('');
-}
-
-async function loadSupabaseEvents(){
-  const status = document.getElementById('dataStatus');
-  const statusText = document.getElementById('dataStatusText');
-
-  try{
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/events?select=*&order=date.asc,time.asc`,
-      {
-        headers: {
-          apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`
-        }
-      }
-    );
-
-    if(!res.ok){
-      throw new Error(`HTTP ${res.status}`);
-    }
-
-    const rows = await res.json();
-    const liveEvents = rows.map(normalizeEvent);
-
-    if(liveEvents.length){
-      calendarEvents = liveEvents;
-      renderCalendar();
-      renderHomeTimeline(liveEvents);
-    } else {
-      renderHomeTimeline([]);
-    }
-
-    status?.classList.remove('error');
-    status?.classList.add('ok');
-    if(statusText) statusText.textContent = `Supabase接続済み・${liveEvents.length}件取得`;
-  }catch(err){
-    status?.classList.remove('ok');
-    status?.classList.add('error');
-    if(statusText) statusText.textContent = 'Supabase接続エラー';
-    console.error(err);
-  }
-}
-
-renderCalendar();
-loadSupabaseEvents();
-});
-document.getElementById('todayBtn')?.addEventListener('click',()=>{
-  selectedDate = new Date('2026-10-05T00:00:00');
-  
-const SUPABASE_URL = 'https://sbudokmgkfvrfgslfjyq.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_oOmD_eZmTT6ON4BFiavPjQ_xZqe0ivR';
-
-function normalizeEvent(row){
-  return {
-    id: row.id,
-    date: row.date || '',
-    time: row.time ? String(row.time).slice(0,5) : '',
-    type: row.type || 'indicator',
-    country: (row.country || '').toUpperCase(),
-    title: row.title || '予定',
-    importance: Number(row.importance || 2),
-    actual: row.actual || '',
-    forecast: row.forecast || '',
-    previous: row.previous || ''
-  };
-}
-
-function renderHomeTimeline(events){
-  const wrap = document.getElementById('homeTimeline');
-  if(!wrap) return;
-  const todayKey = '2026-10-05';
-  const todayEvents = events
-    .filter(e => e.date === todayKey)
-    .sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
-
-  if(!todayEvents.length){
-    wrap.innerHTML = '<div class="cal-empty">Supabaseに今日の予定はまだありません</div>';
-    return;
-  }
-
-  wrap.innerHTML = todayEvents.map(e=>{
-    const flag = flagMap[e.country] || '🌐';
-    const cls = e.type === 'rate' ? 'event rate' : 'event';
-    const barClass = e.type === 'rate' ? 'gold' : (e.importance >= 3 ? 'red' : 'yellow');
-    const prefix = e.type === 'rate' ? '🏦 ' : e.type === 'speech' ? '🎙 ' : '';
-    const beginnerText = e.type === 'rate'
-      ? '政策金利の発表'
-      : e.type === 'speech'
-      ? '要人発言'
-      : '経済指標';
-
-    return `
-      <div class="${cls}">
-        <div class="when">${e.time || '--:--'}</div>
-        <div>
-          <div class="title">${prefix}${flag} ${escapeHtml(e.title)}</div>
-          <div class="desc"><span class="beginner-only">${beginnerText}</span></div>
-        </div>
-        <div class="bar ${barClass}"></div>
-      </div>`;
-  }).join('');
-}
-
-async function loadSupabaseEvents(){
-  const status = document.getElementById('dataStatus');
-  const statusText = document.getElementById('dataStatusText');
-
-  try{
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/events?select=*&order=date.asc,time.asc`,
-      {
-        headers: {
-          apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`
-        }
-      }
-    );
-
-    if(!res.ok){
-      throw new Error(`HTTP ${res.status}`);
-    }
-
-    const rows = await res.json();
-    const liveEvents = rows.map(normalizeEvent);
-
-    if(liveEvents.length){
-      calendarEvents = liveEvents;
-      renderCalendar();
-      renderHomeTimeline(liveEvents);
-    } else {
-      renderHomeTimeline([]);
-    }
-
-    status?.classList.remove('error');
-    status?.classList.add('ok');
-    if(statusText) statusText.textContent = `Supabase接続済み・${liveEvents.length}件取得`;
-  }catch(err){
-    status?.classList.remove('ok');
-    status?.classList.add('error');
-    if(statusText) statusText.textContent = 'Supabase接続エラー';
-    console.error(err);
-  }
-}
-
-renderCalendar();
-loadSupabaseEvents();
-});
-
-document.querySelectorAll('.filter-chip').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    activeFilter = btn.dataset.filter;
-    
-const SUPABASE_URL = 'https://sbudokmgkfvrfgslfjyq.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_oOmD_eZmTT6ON4BFiavPjQ_xZqe0ivR';
-
-function normalizeEvent(row){
-  return {
-    id: row.id,
-    date: row.date || '',
-    time: row.time ? String(row.time).slice(0,5) : '',
-    type: row.type || 'indicator',
-    country: (row.country || '').toUpperCase(),
-    title: row.title || '予定',
-    importance: Number(row.importance || 2),
-    actual: row.actual || '',
-    forecast: row.forecast || '',
-    previous: row.previous || ''
-  };
-}
-
-function renderHomeTimeline(events){
-  const wrap = document.getElementById('homeTimeline');
-  if(!wrap) return;
-  const todayKey = '2026-10-05';
-  const todayEvents = events
-    .filter(e => e.date === todayKey)
-    .sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
-
-  if(!todayEvents.length){
-    wrap.innerHTML = '<div class="cal-empty">Supabaseに今日の予定はまだありません</div>';
-    return;
-  }
-
-  wrap.innerHTML = todayEvents.map(e=>{
-    const flag = flagMap[e.country] || '🌐';
-    const cls = e.type === 'rate' ? 'event rate' : 'event';
-    const barClass = e.type === 'rate' ? 'gold' : (e.importance >= 3 ? 'red' : 'yellow');
-    const prefix = e.type === 'rate' ? '🏦 ' : e.type === 'speech' ? '🎙 ' : '';
-    const beginnerText = e.type === 'rate'
-      ? '政策金利の発表'
-      : e.type === 'speech'
-      ? '要人発言'
-      : '経済指標';
-
-    return `
-      <div class="${cls}">
-        <div class="when">${e.time || '--:--'}</div>
-        <div>
-          <div class="title">${prefix}${flag} ${escapeHtml(e.title)}</div>
-          <div class="desc"><span class="beginner-only">${beginnerText}</span></div>
-        </div>
-        <div class="bar ${barClass}"></div>
-      </div>`;
-  }).join('');
-}
-
-async function loadSupabaseEvents(){
-  const status = document.getElementById('dataStatus');
-  const statusText = document.getElementById('dataStatusText');
-
-  try{
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/events?select=*&order=date.asc,time.asc`,
-      {
-        headers: {
-          apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`
-        }
-      }
-    );
-
-    if(!res.ok){
-      throw new Error(`HTTP ${res.status}`);
-    }
-
-    const rows = await res.json();
-    const liveEvents = rows.map(normalizeEvent);
-
-    if(liveEvents.length){
-      calendarEvents = liveEvents;
-      renderCalendar();
-      renderHomeTimeline(liveEvents);
-    } else {
-      renderHomeTimeline([]);
-    }
-
-    status?.classList.remove('error');
-    status?.classList.add('ok');
-    if(statusText) statusText.textContent = `Supabase接続済み・${liveEvents.length}件取得`;
-  }catch(err){
-    status?.classList.remove('ok');
-    status?.classList.add('error');
-    if(statusText) statusText.textContent = 'Supabase接続エラー';
-    console.error(err);
-  }
-}
-
-renderCalendar();
-loadSupabaseEvents();
-  });
-});
-
-function parseCsv(text){
-  const lines = text.replace(/\r/g,'').split('\n').filter(Boolean);
-  if(lines.length < 2) return [];
-  const header = lines[0].split(',').map(s=>s.trim().toLowerCase());
-  const idx = Object.fromEntries(header.map((h,i)=>[h,i]));
-  return lines.slice(1).map(line=>{
-    const c = line.split(',').map(s=>s.trim());
-    return {
-      date:c[idx.date]||'',
-      time:c[idx.time]||'',
-      type:c[idx.type]||'indicator',
-      country:(c[idx.country]||'').toUpperCase(),
-      title:c[idx.title]||'予定',
-      importance:Number(c[idx.importance]||2)
-    };
-  }).filter(e=>/^\d{4}-\d{2}-\d{2}$/.test(e.date));
-}
-
-function parseIcs(text){
-  const unfolded = text.replace(/\r?\n[ \t]/g,'');
-  const blocks = unfolded.split('BEGIN:VEVENT').slice(1);
-  const out = [];
-  for(const block of blocks){
-    const end = block.split('END:VEVENT')[0];
-    const dt = (end.match(/DTSTART[^:]*:([^\r\n]+)/)||[])[1];
-    const summary = (end.match(/SUMMARY:([^\r\n]+)/)||[])[1] || '予定';
-    if(!dt) continue;
-    const m = dt.match(/(\d{4})(\d{2})(\d{2})T?(\d{2})?(\d{2})?/);
-    if(!m) continue;
-    out.push({
-      date:`${m[1]}-${m[2]}-${m[3]}`,
-      time:m[4] ? `${m[4]}:${m[5]||'00'}` : '00:00',
-      type:'indicator',
-      country:'',
-      title:summary.replace(/\\,/g,',').replace(/\\n/g,' '),
-      importance:2
-    });
-  }
-  return out;
-}
-
-document.getElementById('calendarImport')?.addEventListener('change', async e=>{
-  const file = e.target.files?.[0];
-  if(!file) return;
-  const text = await file.text();
-  let imported = [];
-  try{
-    imported = file.name.toLowerCase().endsWith('.ics') ? parseIcs(text) : parseCsv(text);
-    if(!imported.length) throw new Error('no events');
-    calendarEvents = [...calendarEvents, ...imported];
-    saveCalendar();
-    document.getElementById('importStatus').textContent = `${imported.length}件の予定を取り込みました。`;
-    selectedDate = new Date(imported[0].date + 'T00:00:00');
-    
-const SUPABASE_URL = 'https://sbudokmgkfvrfgslfjyq.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_oOmD_eZmTT6ON4BFiavPjQ_xZqe0ivR';
-
-function normalizeEvent(row){
-  return {
-    id: row.id,
-    date: row.date || '',
-    time: row.time ? String(row.time).slice(0,5) : '',
-    type: row.type || 'indicator',
-    country: (row.country || '').toUpperCase(),
-    title: row.title || '予定',
-    importance: Number(row.importance || 2),
-    actual: row.actual || '',
-    forecast: row.forecast || '',
-    previous: row.previous || ''
-  };
-}
-
-function renderHomeTimeline(events){
-  const wrap = document.getElementById('homeTimeline');
-  if(!wrap) return;
-  const todayKey = '2026-10-05';
-  const todayEvents = events
-    .filter(e => e.date === todayKey)
-    .sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
-
-  if(!todayEvents.length){
-    wrap.innerHTML = '<div class="cal-empty">Supabaseに今日の予定はまだありません</div>';
-    return;
-  }
-
-  wrap.innerHTML = todayEvents.map(e=>{
-    const flag = flagMap[e.country] || '🌐';
-    const cls = e.type === 'rate' ? 'event rate' : 'event';
-    const barClass = e.type === 'rate' ? 'gold' : (e.importance >= 3 ? 'red' : 'yellow');
-    const prefix = e.type === 'rate' ? '🏦 ' : e.type === 'speech' ? '🎙 ' : '';
-    const beginnerText = e.type === 'rate'
-      ? '政策金利の発表'
-      : e.type === 'speech'
-      ? '要人発言'
-      : '経済指標';
-
-    return `
-      <div class="${cls}">
-        <div class="when">${e.time || '--:--'}</div>
-        <div>
-          <div class="title">${prefix}${flag} ${escapeHtml(e.title)}</div>
-          <div class="desc"><span class="beginner-only">${beginnerText}</span></div>
-        </div>
-        <div class="bar ${barClass}"></div>
-      </div>`;
-  }).join('');
-}
-
-async function loadSupabaseEvents(){
-  const status = document.getElementById('dataStatus');
-  const statusText = document.getElementById('dataStatusText');
-
-  try{
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/events?select=*&order=date.asc,time.asc`,
-      {
-        headers: {
-          apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`
-        }
-      }
-    );
-
-    if(!res.ok){
-      throw new Error(`HTTP ${res.status}`);
-    }
-
-    const rows = await res.json();
-    const liveEvents = rows.map(normalizeEvent);
-
-    if(liveEvents.length){
-      calendarEvents = liveEvents;
-      renderCalendar();
-      renderHomeTimeline(liveEvents);
-    } else {
-      renderHomeTimeline([]);
-    }
-
-    status?.classList.remove('error');
-    status?.classList.add('ok');
-    if(statusText) statusText.textContent = `Supabase接続済み・${liveEvents.length}件取得`;
-  }catch(err){
-    status?.classList.remove('ok');
-    status?.classList.add('error');
-    if(statusText) statusText.textContent = 'Supabase接続エラー';
-    console.error(err);
-  }
-}
-
-renderCalendar();
-loadSupabaseEvents();
-  }catch(err){
-    document.getElementById('importStatus').textContent = '取り込みに失敗しました。CSV/ICSの形式を確認してください。';
-  }
-  e.target.value='';
-});
-
-document.getElementById('resetCalendar')?.addEventListener('click',()=>{
-  calendarEvents = [...sampleCalendarEvents];
-  saveCalendar();
-  selectedDate = new Date('2026-10-05T00:00:00');
-  document.getElementById('importStatus').textContent = 'サンプル予定に戻しました。';
-  
-const SUPABASE_URL = 'https://sbudokmgkfvrfgslfjyq.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_oOmD_eZmTT6ON4BFiavPjQ_xZqe0ivR';
-
-function normalizeEvent(row){
-  return {
-    id: row.id,
-    date: row.date || '',
-    time: row.time ? String(row.time).slice(0,5) : '',
-    type: row.type || 'indicator',
-    country: (row.country || '').toUpperCase(),
-    title: row.title || '予定',
-    importance: Number(row.importance || 2),
-    actual: row.actual || '',
-    forecast: row.forecast || '',
-    previous: row.previous || ''
-  };
-}
-
-function renderHomeTimeline(events){
-  const wrap = document.getElementById('homeTimeline');
-  if(!wrap) return;
-  const todayKey = '2026-10-05';
-  const todayEvents = events
-    .filter(e => e.date === todayKey)
-    .sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
-
-  if(!todayEvents.length){
-    wrap.innerHTML = '<div class="cal-empty">Supabaseに今日の予定はまだありません</div>';
-    return;
-  }
-
-  wrap.innerHTML = todayEvents.map(e=>{
-    const flag = flagMap[e.country] || '🌐';
-    const cls = e.type === 'rate' ? 'event rate' : 'event';
-    const barClass = e.type === 'rate' ? 'gold' : (e.importance >= 3 ? 'red' : 'yellow');
-    const prefix = e.type === 'rate' ? '🏦 ' : e.type === 'speech' ? '🎙 ' : '';
-    const beginnerText = e.type === 'rate'
-      ? '政策金利の発表'
-      : e.type === 'speech'
-      ? '要人発言'
-      : '経済指標';
-
-    return `
-      <div class="${cls}">
-        <div class="when">${e.time || '--:--'}</div>
-        <div>
-          <div class="title">${prefix}${flag} ${escapeHtml(e.title)}</div>
-          <div class="desc"><span class="beginner-only">${beginnerText}</span></div>
-        </div>
-        <div class="bar ${barClass}"></div>
-      </div>`;
-  }).join('');
-}
-
-async function loadSupabaseEvents(){
-  const status = document.getElementById('dataStatus');
-  const statusText = document.getElementById('dataStatusText');
-
-  try{
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/events?select=*&order=date.asc,time.asc`,
-      {
-        headers: {
-          apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`
-        }
-      }
-    );
-
-    if(!res.ok){
-      throw new Error(`HTTP ${res.status}`);
-    }
-
-    const rows = await res.json();
-    const liveEvents = rows.map(normalizeEvent);
-
-    if(liveEvents.length){
-      calendarEvents = liveEvents;
-      renderCalendar();
-      renderHomeTimeline(liveEvents);
-    } else {
-      renderHomeTimeline([]);
-    }
-
-    status?.classList.remove('error');
-    status?.classList.add('ok');
-    if(statusText) statusText.textContent = `Supabase接続済み・${liveEvents.length}件取得`;
-  }catch(err){
-    status?.classList.remove('ok');
-    status?.classList.add('error');
-    if(statusText) statusText.textContent = 'Supabase接続エラー';
-    console.error(err);
-  }
-}
-
-renderCalendar();
-loadSupabaseEvents();
-});
-
-
-const SUPABASE_URL = 'https://sbudokmgkfvrfgslfjyq.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_oOmD_eZmTT6ON4BFiavPjQ_xZqe0ivR';
-
-function normalizeEvent(row){
-  return {
-    id: row.id,
-    date: row.date || '',
-    time: row.time ? String(row.time).slice(0,5) : '',
-    type: row.type || 'indicator',
-    country: (row.country || '').toUpperCase(),
-    title: row.title || '予定',
-    importance: Number(row.importance || 2),
-    actual: row.actual || '',
-    forecast: row.forecast || '',
-    previous: row.previous || ''
-  };
-}
-
-function renderHomeTimeline(events){
-  const wrap = document.getElementById('homeTimeline');
-  if(!wrap) return;
-  const todayKey = '2026-10-05';
-  const todayEvents = events
-    .filter(e => e.date === todayKey)
-    .sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
-
-  if(!todayEvents.length){
-    wrap.innerHTML = '<div class="cal-empty">Supabaseに今日の予定はまだありません</div>';
-    return;
-  }
-
-  wrap.innerHTML = todayEvents.map(e=>{
-    const flag = flagMap[e.country] || '🌐';
-    const cls = e.type === 'rate' ? 'event rate' : 'event';
-    const barClass = e.type === 'rate' ? 'gold' : (e.importance >= 3 ? 'red' : 'yellow');
-    const prefix = e.type === 'rate' ? '🏦 ' : e.type === 'speech' ? '🎙 ' : '';
-    const beginnerText = e.type === 'rate'
-      ? '政策金利の発表'
-      : e.type === 'speech'
-      ? '要人発言'
-      : '経済指標';
-
-    return `
-      <div class="${cls}">
-        <div class="when">${e.time || '--:--'}</div>
-        <div>
-          <div class="title">${prefix}${flag} ${escapeHtml(e.title)}</div>
-          <div class="desc"><span class="beginner-only">${beginnerText}</span></div>
-        </div>
-        <div class="bar ${barClass}"></div>
-      </div>`;
-  }).join('');
-}
-
-async function loadSupabaseEvents(){
-  const status = document.getElementById('dataStatus');
-  const statusText = document.getElementById('dataStatusText');
-
-  try{
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/events?select=*&order=date.asc,time.asc`,
-      {
-        headers: {
-          apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`
-        }
-      }
-    );
-
-    if(!res.ok){
-      throw new Error(`HTTP ${res.status}`);
-    }
-
-    const rows = await res.json();
-    const liveEvents = rows.map(normalizeEvent);
-
-    if(liveEvents.length){
-      calendarEvents = liveEvents;
-      renderCalendar();
-      renderHomeTimeline(liveEvents);
-    } else {
-      renderHomeTimeline([]);
-    }
-
-    status?.classList.remove('error');
-    status?.classList.add('ok');
-    if(statusText) statusText.textContent = `Supabase接続済み・${liveEvents.length}件取得`;
-  }catch(err){
-    status?.classList.remove('ok');
-    status?.classList.add('error');
-    if(statusText) statusText.textContent = 'Supabase接続エラー';
-    console.error(err);
-  }
-}
-
-renderCalendar();
-loadSupabaseEvents();
+const allNav=[...document.querySelectorAll("[data-target]")], sections=[...document.querySelectorAll("main section")];
+function show(target){if(target==="glossary"&&document.body.classList.contains("beginner-hidden"))target="home";sections.forEach(s=>s.classList.toggle("hidden",s.id!==target));allNav.forEach(b=>b.classList.toggle("active",b.dataset.target===target))}
+allNav.forEach(b=>b.addEventListener("click",()=>show(b.dataset.target)));
+
+const beginnerToggle=document.getElementById("beginnerToggle"), modeBadge=document.getElementById("modeBadge");
+function applyBeginner(on){document.body.classList.toggle("beginner-hidden",!on);beginnerToggle.checked=on;modeBadge.textContent=`初心者モード ${on?"ON":"OFF"}`;localStorage.setItem("fxsignal_beginner",on?"1":"0");if(!on&&!document.getElementById("glossary").classList.contains("hidden"))show("home")}
+applyBeginner(localStorage.getItem("fxsignal_beginner")!=="0");
+beginnerToggle.addEventListener("change",e=>applyBeginner(e.target.checked));
+modeBadge.addEventListener("click",()=>applyBeginner(document.body.classList.contains("beginner-hidden")));
+
+document.querySelectorAll(".choice").forEach(b=>b.addEventListener("click",()=>b.classList.toggle("active")));
+document.querySelectorAll(".filter").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".filter").forEach(x=>x.classList.remove("active"));b.classList.add("active");activeFilter=b.dataset.filter;renderCalendar()}));
+document.getElementById("prevDay").addEventListener("click",()=>{selectedDate.setDate(selectedDate.getDate()-1);renderCalendar()});
+document.getElementById("nextDay").addEventListener("click",()=>{selectedDate.setDate(selectedDate.getDate()+1);renderCalendar()});
+document.getElementById("todayBtn").addEventListener("click",()=>{selectedDate=new Date();renderCalendar()});
+document.getElementById("refreshData").addEventListener("click",loadData);
+
+updateMarkets(); setInterval(updateMarkets,60000); loadData();
 </script>
 </body>
 </html>
