@@ -1,4 +1,4 @@
-const CACHE_NAME = "fx-signal-push6";
+const CACHE_NAME = "fx-signal-2026.10.06-push18";
 
 const STATIC_ASSETS = [
   "./manifest.json",
@@ -12,24 +12,20 @@ const STATIC_ASSETS = [
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache =>
-      Promise.all(
-        STATIC_ASSETS.map(url => cache.add(url).catch(() => null))
-      )
+      Promise.all(STATIC_ASSETS.map(url => cache.add(url).catch(() => null)))
     )
   );
-  // This hotfix activates immediately so old cached update-banner code is removed.
   self.skipWaiting();
 });
 
 self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-      )
-    )
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(key => caches.delete(key)));
+      await self.clients.claim();
+    })()
   );
-  self.clients.claim();
 });
 
 self.addEventListener("message", event => {
@@ -38,8 +34,62 @@ self.addEventListener("message", event => {
   }
 });
 
+self.addEventListener("fetch", event => {
+  const req = event.request;
+  if (req.method !== "GET") return;
+
+  const url = new URL(req.url);
+
+  // Always use the network for page navigations and the main HTML.
+  // This prevents an old index.html from being served forever.
+  if (
+    req.mode === "navigate" ||
+    url.pathname.endsWith("/index.html") ||
+    url.pathname.endsWith("/FXSIGNAL/") ||
+    url.pathname.endsWith("/version.json")
+  ) {
+    event.respondWith(
+      fetch(req, { cache: "no-store" }).catch(async () => {
+        const cached = await caches.match(req);
+        if (cached) return cached;
+        return new Response(
+          "FX SIGNAL is offline. Please reconnect and reload.",
+          { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } }
+        );
+      })
+    );
+    return;
+  }
+
+  // APIs must never be served from the PWA cache.
+  if (
+    req.url.includes("supabase.co") ||
+    req.url.includes("xoomar.com") ||
+    req.url.includes("financecalendar.com") ||
+    req.url.includes("helious.io")
+  ) {
+    event.respondWith(fetch(req, { cache: "no-store" }));
+    return;
+  }
+
+  // Static assets can be cache-first.
+  event.respondWith(
+    caches.match(req).then(cached => {
+      if (cached) return cached;
+      return fetch(req).then(response => {
+        if (response && response.ok && url.origin === self.location.origin) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
+        }
+        return response;
+      });
+    })
+  );
+});
+
 self.addEventListener("push", event => {
   let data = {};
+
   try {
     data = event.data ? event.data.json() : {};
   } catch {
@@ -49,21 +99,20 @@ self.addEventListener("push", event => {
     };
   }
 
-  const title = data.title || "FX SIGNAL";
-  const options = {
-    body: data.body || "経済イベントの時間が近づいています",
-    icon: "./icon-192.png",
-    badge: "./icon-192.png",
-    tag: data.tag || "fxsignal-event",
-    renotify: true,
-    timestamp: Date.now(),
-    data: {
-      url: data.url || "./",
-      eventKey: data.eventKey || null
-    }
-  };
-
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    self.registration.showNotification(data.title || "FX SIGNAL", {
+      body: data.body || "経済イベントの時間が近づいています",
+      icon: "./icon-192.png",
+      badge: "./icon-192.png",
+      tag: data.tag || "fxsignal-event",
+      renotify: true,
+      timestamp: Date.now(),
+      data: {
+        url: data.url || "./",
+        eventKey: data.eventKey || null
+      }
+    })
+  );
 });
 
 self.addEventListener("notificationclick", event => {
@@ -71,7 +120,7 @@ self.addEventListener("notificationclick", event => {
 
   const targetUrl = new URL(
     event.notification?.data?.url || "./",
-    self.location.origin + self.registration.scope
+    self.registration.scope
   ).href;
 
   event.waitUntil(
@@ -83,68 +132,6 @@ self.addEventListener("notificationclick", event => {
         }
       }
       if (clients.openWindow) return clients.openWindow(targetUrl);
-    })
-  );
-});
-
-self.addEventListener("fetch", event => {
-  const req = event.request;
-  if (req.method !== "GET") return;
-
-  const url = new URL(req.url);
-
-  if (
-    req.url.includes("supabase.co") ||
-    req.url.includes("xoomar.com") ||
-    req.url.includes("financecalendar.com") ||
-    req.url.includes("helious.io")
-  ) {
-    event.respondWith(fetch(req).catch(() => caches.match(req)));
-    return;
-  }
-
-  if (url.pathname.endsWith("/version.json")) {
-    event.respondWith(fetch(req, { cache: "no-store" }));
-    return;
-  }
-
-  if (
-    req.mode === "navigate" ||
-    url.pathname.endsWith("/index.html") ||
-    url.pathname.endsWith("/install.html") ||
-    url.pathname.endsWith("/FXSIGNAL/")
-  ) {
-    event.respondWith(
-      fetch(req, { cache: "no-store" })
-        .then(response => {
-          if (response && response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
-          }
-          return response;
-        })
-        .catch(async () => {
-          const cached = await caches.match(req);
-          if (cached) return cached;
-          return caches.match("./index.html");
-        })
-    );
-    return;
-  }
-
-  event.respondWith(
-    caches.match(req).then(cached => {
-      const network = fetch(req)
-        .then(response => {
-          if (response && response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
-          }
-          return response;
-        })
-        .catch(() => cached);
-
-      return cached || network;
     })
   );
 });
