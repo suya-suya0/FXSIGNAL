@@ -920,7 +920,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push18">
+<meta name="fx-signal-version" content="2026.10.06-push19">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -932,11 +932,11 @@ body.force-desktop{
 <aside class="sidebar">
   <div class="brand"><h1>FX SIGNAL</h1><small>重要指標・金利発表アラート</small></div>
   <div class="nav">
-    <button class="navbtn active" data-target="home">🏠 今日</button>
-    <button class="navbtn" data-target="calendar">📅 カレンダー</button>
-    <button class="navbtn" data-target="alerts">🔔 通知</button>
-    <button class="navbtn glossary-nav" data-target="glossary">📘 用語集</button>
-    <button class="navbtn" data-target="settings">⚙️ 設定</button>
+    <button class="navbtn active" data-target="home" onclick="window.fxShowSection&&window.fxShowSection('home')">🏠 今日</button>
+    <button class="navbtn" data-target="calendar" onclick="window.fxShowSection&&window.fxShowSection('calendar')">📅 カレンダー</button>
+    <button class="navbtn" data-target="alerts" onclick="window.fxShowSection&&window.fxShowSection('alerts')">🔔 通知</button>
+    <button class="navbtn glossary-nav" data-target="glossary" onclick="window.fxShowSection&&window.fxShowSection('glossary')">📘 用語集</button>
+    <button class="navbtn" data-target="settings" onclick="window.fxShowSection&&window.fxShowSection('settings')">⚙️ 設定</button>
   </div>
   <div class="sidebar-foot">Live data via Supabase<br>Data: <a href="https://xoomar.com" target="_blank" rel="noopener">XOOMAR</a> + <a href="https://www.financecalendar.com" target="_blank" rel="noopener">FinanceCalendar.com</a> + <a href="https://helious.io" target="_blank" rel="noopener">Helious</a></div>
 </aside>
@@ -1221,6 +1221,8 @@ body.force-desktop{
   </section>
 
   <section id="settings" class="hidden">
+<div id="buildMarker" style="font-size:11px;color:#71809a;margin:0 0 10px">Build 2026.10.06-push19</div>
+
     <div class="card">
       <h3>設定</h3>
       <div class="notify-group">
@@ -1279,14 +1281,53 @@ body.force-desktop{
 </div>
 
 <nav class="mobile-nav">
-  <button class="mnav active" data-target="home"><span>🏠</span>今日</button>
-  <button class="mnav" data-target="calendar"><span>📅</span>予定</button>
-  <button class="mnav" data-target="alerts"><span>🔔</span>通知</button>
-  <button class="mnav glossary-nav" data-target="glossary"><span>📘</span>用語</button>
-  <button class="mnav" data-target="settings"><span>⚙️</span>設定</button>
+  <button class="mnav active" data-target="home" onclick="window.fxShowSection&&window.fxShowSection('home')"><span>🏠</span>今日</button>
+  <button class="mnav" data-target="calendar" onclick="window.fxShowSection&&window.fxShowSection('calendar')"><span>📅</span>予定</button>
+  <button class="mnav" data-target="alerts" onclick="window.fxShowSection&&window.fxShowSection('alerts')"><span>🔔</span>通知</button>
+  <button class="mnav glossary-nav" data-target="glossary" onclick="window.fxShowSection&&window.fxShowSection('glossary')"><span>📘</span>用語</button>
+  <button class="mnav" data-target="settings" onclick="window.fxShowSection&&window.fxShowSection('settings')"><span>⚙️</span>設定</button>
 </nav>
 
+
+<script id="fx-ui-bootstrap">
+(function(){
+  function showSection(target){
+    if(target==="glossary" && document.body.classList.contains("beginner-hidden")){
+      target="home";
+    }
+
+    document.querySelectorAll("main section").forEach(function(section){
+      section.classList.toggle("hidden", section.id!==target);
+    });
+
+    document.querySelectorAll("[data-target]").forEach(function(button){
+      button.classList.toggle("active", button.dataset.target===target);
+    });
+
+    try{ localStorage.setItem("fxsignal_active_section", target); }catch(e){}
+  }
+
+  window.fxShowSection=showSection;
+
+  document.addEventListener("click", function(event){
+    var button=event.target.closest && event.target.closest("[data-target]");
+    if(!button) return;
+    event.preventDefault();
+    showSection(button.dataset.target);
+  });
+
+  // Restore the last screen without waiting for Supabase.
+  document.addEventListener("DOMContentLoaded", function(){
+    var saved="home";
+    try{ saved=localStorage.getItem("fxsignal_active_section") || "home"; }catch(e){}
+    if(!document.getElementById(saved)) saved="home";
+    showSection(saved);
+  });
+})();
+</script>
+
 <script>
+const FX_SIGNAL_APP_VERSION="2026.10.06-push19";
 const SUPABASE_URL = "https://sbudokmgkfvrfgslfjyq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_oOmD_eZmTT6ON4BFiavPjQ_xZqe0ivR";
 let events = [];
@@ -2417,24 +2458,40 @@ async function loadData(){
   const box=document.getElementById("dataStatus");
   const text=document.getElementById("statusText");
 
-  box.className="status";
-  text.textContent="Supabaseに接続中…";
+  if(box) box.className="status";
+  if(text) text.textContent=`Supabaseに接続中…（${FX_SIGNAL_APP_VERSION}）`;
 
+  // Calendar/navigation must remain usable even while data is unavailable.
+  try{
+    renderCalendar();
+  }catch(err){
+    console.warn("Initial calendar render failed:",err);
+  }
+
+  const url=`${SUPABASE_URL}/rest/v1/events?select=*&order=date.asc,time.asc`;
   const controller=new AbortController();
-  const timeoutId=setTimeout(()=>controller.abort(),12000);
+
+  const fetchPromise=fetch(url,{
+    method:"GET",
+    headers:{
+      apikey:SUPABASE_KEY,
+      Accept:"application/json"
+    },
+    cache:"no-store",
+    signal:controller.signal
+  });
+
+  let timeoutId=null;
+  const timeoutPromise=new Promise((_,reject)=>{
+    timeoutId=setTimeout(()=>{
+      try{ controller.abort(); }catch{}
+      reject(new Error("SUPABASE_TIMEOUT_12S"));
+    },12000);
+  });
 
   try{
-    const url=`${SUPABASE_URL}/rest/v1/events?select=*&order=date.asc,time.asc`;
-
-    const r=await fetch(url,{
-      method:"GET",
-      headers:{
-        apikey:SUPABASE_KEY,
-        Accept:"application/json"
-      },
-      cache:"no-store",
-      signal:controller.signal
-    });
+    // Promise.race guarantees the UI can escape "接続中" even if fetch itself hangs.
+    const r=await Promise.race([fetchPromise,timeoutPromise]);
 
     if(!r.ok){
       let detail="";
@@ -2455,8 +2512,8 @@ async function loadData(){
 
     events=dedupeEvents(rows.map(normalize));
 
-    box.className="status ok";
-    text.textContent=`Supabase接続済み・${events.length}件取得`;
+    if(box) box.className="status ok";
+    if(text) text.textContent=`Supabase接続済み・${events.length}件取得`;
 
     renderHome();
     renderCalendar();
@@ -2464,23 +2521,31 @@ async function loadData(){
     checkScheduledNotifications();
 
   }catch(err){
-    box.className="status error";
+    if(box) box.className="status error";
 
-    if(err?.name==="AbortError"){
-      text.textContent="接続エラー: Supabase応答タイムアウト（12秒）";
-    }else{
-      text.textContent=`接続エラー: ${String(err?.message||err)}`;
+    const message=String(err?.message||err);
+    if(text){
+      text.textContent=
+        message==="SUPABASE_TIMEOUT_12S"
+          ?"接続エラー：Supabaseが12秒以内に応答しませんでした"
+          :`接続エラー：${message}`;
     }
 
     const home=document.getElementById("homeTimeline");
     if(home){
-      home.innerHTML='<div class="empty">Supabaseから予定を取得できませんでした</div>';
+      home.innerHTML=
+        '<div class="empty">予定データを取得できませんでした。<br>カレンダー・用語集・設定はそのまま利用できます。</div>';
+    }
+
+    // Calendar remains open and usable with an empty data array.
+    events=[];
+    try{ renderCalendar(); }catch(calendarError){
+      console.warn("Offline calendar render failed:",calendarError);
     }
 
     console.error("Supabase events fetch failed:",err);
-
   }finally{
-    clearTimeout(timeoutId);
+    if(timeoutId) clearTimeout(timeoutId);
   }
 }
 
@@ -2996,7 +3061,7 @@ async function getPushServiceWorkerRegistration(){
 
   if(!reg){
     try{
-      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push18");
+      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push19");
     }catch(err){
       throw new Error(`SERVICE_WORKER_REGISTER_FAILED: ${String(err?.message||err)}`);
     }
@@ -3546,8 +3611,15 @@ setInterval(updateNotificationSchedulerStatus,30_000);
 
 
 const allNav=[...document.querySelectorAll("[data-target]")], sections=[...document.querySelectorAll("main section")];
-function show(target){if(target==="glossary"&&document.body.classList.contains("beginner-hidden"))target="home";sections.forEach(s=>s.classList.toggle("hidden",s.id!==target));allNav.forEach(b=>b.classList.toggle("active",b.dataset.target===target))}
-allNav.forEach(b=>b.addEventListener("click",()=>show(b.dataset.target)));
+function show(target){
+  if(typeof window.fxShowSection==="function"){
+    window.fxShowSection(target);
+    return;
+  }
+  if(target==="glossary"&&document.body.classList.contains("beginner-hidden"))target="home";
+  sections.forEach(s=>s.classList.toggle("hidden",s.id!==target));
+  allNav.forEach(b=>b.classList.toggle("active",b.dataset.target===target));
+}
 
 const beginnerToggle=document.getElementById("beginnerToggle"), modeBadge=document.getElementById("modeBadge");
 function applyBeginner(on){document.body.classList.toggle("beginner-hidden",!on);beginnerToggle.checked=on;modeBadge.textContent=`初心者モード ${on?"ON":"OFF"}`;localStorage.setItem("fxsignal_beginner",on?"1":"0");if(!on&&!document.getElementById("glossary").classList.contains("hidden"))show("home")}
@@ -3652,7 +3724,6 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
 
-const FX_SIGNAL_APP_VERSION="2026.10.06-push18";
 
 let fxSignalLatestVersion = FX_SIGNAL_APP_VERSION;
 
@@ -3878,7 +3949,7 @@ document.getElementById("pwaInstallBtn")?.addEventListener("click",async()=>{
 if("serviceWorker" in navigator){
   window.addEventListener("load",async()=>{
     try{
-      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push18");
+      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push19");
       fxSignalRegistration=reg;
 
       // Clear stale UI first, then inspect actual worker state.
