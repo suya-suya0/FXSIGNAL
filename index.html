@@ -920,7 +920,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push4">
+<meta name="fx-signal-version" content="2026.10.06-push5">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -1164,6 +1164,7 @@ body.force-desktop{
           <div class="sub">最初に一度だけ、通知許可と音の確認をしてください。</div>
           <div class="notification-setup-actions">
             <button id="requestNotificationPermissionBtn" class="mini primary" type="button">通知をONにする</button>
+            <button id="revokeNotificationHelpBtn" class="mini" type="button">通知許可を解除する方法</button>
             <button id="testRealNotificationBtn" class="mini" type="button">本番通知をテスト</button>
           </div>
           <div id="notificationSetupStatus" class="notification-setup-status">状態を確認中...</div>
@@ -1246,6 +1247,21 @@ body.force-desktop{
         </div>
       </div>
     
+      
+      <div class="notify-group">
+        <div class="notify-label">アプリ更新</div>
+        <div class="notification-setup">
+          <div class="notification-setup-title">最新版を確認</div>
+          <div class="sub">更新通知は自動表示せず、ここから確認します。</div>
+          <div class="notification-setup-actions">
+            <button id="manualUpdateCheckBtn" class="mini primary" type="button">更新を確認</button>
+          </div>
+          <div id="manualUpdateStatus" class="notification-setup-status">
+            現在のバージョンを確認できます
+          </div>
+        </div>
+      </div>
+
       <div class="notify-group">
         <div class="notify-label">スマホアプリ</div>
         <div class="setting-row">
@@ -2959,6 +2975,37 @@ async function registerBackgroundPush(){try{armNotifications();if(!("Notificatio
 async function syncPushPreferences(){try{if(!("serviceWorker" in navigator)||!("PushManager" in window))return;if(!("Notification" in window)||Notification.permission!=="granted")return;const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();if(!sub)return;const r=await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(sub.endpoint)}`,{method:"PATCH",headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify(pushPrefsPayload(sub))});if(!r.ok)throw new Error(`Push preference sync failed: ${r.status}`);updateBackgroundPushStatus(true)}catch(err){console.warn(err);updateBackgroundPushStatus(false)}}
 async function inspectBackgroundPush(){try{if(!("serviceWorker" in navigator)||!("PushManager" in window)){updateBackgroundPushStatus(false);return}const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();updateBackgroundPushStatus(!!sub)}catch{updateBackgroundPushStatus(false)}}
 
+
+function openNotificationPermissionHelp(){
+  document.getElementById("notificationPermissionHelp")?.classList.remove("hidden");
+  document.body.style.overflow="hidden";
+}
+
+function closeNotificationPermissionHelp(){
+  document.getElementById("notificationPermissionHelp")?.classList.add("hidden");
+  document.body.style.overflow="";
+}
+
+document.getElementById("revokeNotificationHelpBtn")?.addEventListener("click",async()=>{
+  // First make sure FX SIGNAL itself stops sending notifications.
+  try{
+    const reg=("serviceWorker" in navigator) ? await navigator.serviceWorker.ready : null;
+    const sub=reg?.pushManager ? await reg.pushManager.getSubscription() : null;
+    if(sub){
+      await disableBackgroundPush();
+    }
+  }catch{}
+  openNotificationPermissionHelp();
+});
+
+document.getElementById("notificationPermissionHelpClose")?.addEventListener("click",closeNotificationPermissionHelp);
+
+document.getElementById("notificationPermissionHelp")?.addEventListener("click",e=>{
+  if(e.target?.id==="notificationPermissionHelp"){
+    closeNotificationPermissionHelp();
+  }
+});
+
 function notificationPermissionLabel(){
   if(!("Notification" in window)) return "この端末ではブラウザ通知に対応していません。画面内通知と音は利用できます。";
   if(Notification.permission==="granted") return "通知：許可済み";
@@ -3252,7 +3299,7 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
 
-const FX_SIGNAL_APP_VERSION="2026.10.06-push4";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push5";
 
 let fxSignalLatestVersion = FX_SIGNAL_APP_VERSION;
 
@@ -3278,15 +3325,12 @@ async function refreshUpdateBannerByVersion(){
 
   const current=normalizeVersion(FX_SIGNAL_APP_VERSION);
   const latest=normalizeVersion(fxSignalLatestVersion);
-  const needsUpdate=!!latest && latest!==current;
 
-  if(needsUpdate){
-    const status=document.getElementById("appUpdateStatus");
-    if(status) status.textContent=`最新版 ${fxSignalLatestVersion} を利用できます`;
-    showAppUpdateBanner();
-  }else{
-    hideAppUpdateBanner();
-  }
+  return {
+    current,
+    latest,
+    needsUpdate:!!latest && latest!==current
+  };
 }
 
 let fxSignalRegistration = null;
@@ -3299,18 +3343,9 @@ function hasRealWaitingUpdate(reg){
 }
 
 function syncUpdateBanner(reg){
-  const hasWorkerUpdate=hasRealWaitingUpdate(reg);
-
-  if(hasWorkerUpdate){
-    fxSignalUpdateWorker=reg.waiting;
-  }else{
-    fxSignalUpdateWorker=null;
-  }
-
-  // The visible banner is controlled by actual app version mismatch.
-  // A waiting worker alone is not enough, because mobile browsers can keep
-  // stale worker states around after an update.
-  refreshUpdateBannerByVersion();
+  fxSignalUpdateWorker=
+    hasRealWaitingUpdate(reg) ? reg.waiting : null;
+  hideAppUpdateBanner();
 }
 
 
@@ -3391,6 +3426,52 @@ document.addEventListener("visibilitychange",async()=>{
     syncUpdateBanner(reg);
   }catch{}
 });
+
+
+async function manualCheckForUpdate(){
+  const btn=document.getElementById("manualUpdateCheckBtn");
+  const status=document.getElementById("manualUpdateStatus");
+
+  if(btn){
+    btn.disabled=true;
+    btn.textContent="確認中…";
+  }
+  if(status) status.textContent="最新版を確認しています…";
+
+  try{
+    const info=await refreshUpdateBannerByVersion();
+
+    if(info.needsUpdate){
+      if(status){
+        status.textContent=`最新版 ${fxSignalLatestVersion} があります`;
+      }
+      if(btn){
+        btn.disabled=false;
+        btn.textContent="更新する";
+        btn.onclick=applyAppUpdate;
+      }
+    }else{
+      if(status){
+        status.textContent=`現在 ${FX_SIGNAL_APP_VERSION} ／ 最新版です`;
+      }
+      if(btn){
+        btn.disabled=false;
+        btn.textContent="更新を確認";
+        btn.onclick=manualCheckForUpdate;
+      }
+    }
+  }catch(err){
+    console.warn("Manual update check failed:",err);
+    if(status) status.textContent="更新確認に失敗しました";
+    if(btn){
+      btn.disabled=false;
+      btn.textContent="もう一度確認";
+      btn.onclick=manualCheckForUpdate;
+    }
+  }
+}
+
+document.getElementById("manualUpdateCheckBtn")?.addEventListener("click",manualCheckForUpdate);
 
 let deferredInstallPrompt = null;
 
@@ -3493,7 +3574,7 @@ updatePwaInstallUi();
 
 
 
-<div id="appUpdateBanner" class="app-update-banner hidden" role="status" aria-live="polite">
+<div id="appUpdateBanner" class="app-update-banner hidden" style="display:none" role="status" aria-live="polite">
   <div class="app-update-row">
     <div class="app-update-text">
       <strong>新しいバージョンがあります</strong>
@@ -3517,6 +3598,48 @@ updatePwaInstallUi();
   <p id="notificationToastText"></p>
   <div id="notificationToastMeta" class="notification-meta"></div>
 </div>
+
+<div id="notificationPermissionHelp" class="day-popup-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="notificationPermissionHelpTitle">
+  <div class="day-popup">
+    <div class="day-popup-head">
+      <div>
+        <div class="section-kicker">NOTIFICATION PERMISSION</div>
+        <h3 id="notificationPermissionHelpTitle" style="margin:4px 0 0">通知許可を解除する方法</h3>
+      </div>
+      <button id="notificationPermissionHelpClose" class="day-popup-close" type="button" aria-label="閉じる">×</button>
+    </div>
+    <div class="day-popup-list">
+      <div class="note">
+        FX SIGNAL側の通知はOFFにできますが、ブラウザが持つ「通知の許可」そのものはWebアプリから直接解除できません。
+      </div>
+      <div class="event">
+        <div>
+          <div class="title">Android / Chrome</div>
+          <div class="desc">Chrome → サイト設定 → 通知 → FX SIGNAL → ブロック</div>
+        </div>
+      </div>
+      <div class="event">
+        <div>
+          <div class="title">iPhone / PWA</div>
+          <div class="desc">設定 → 通知 → FX SIGNAL → 「通知を許可」をOFF</div>
+        </div>
+      </div>
+      <div class="event">
+        <div>
+          <div class="title">Windows</div>
+          <div class="desc">設定 → システム → 通知 → FX SIGNAL または使用ブラウザ → OFF</div>
+        </div>
+      </div>
+      <div class="event">
+        <div>
+          <div class="title">Mac</div>
+          <div class="desc">システム設定 → 通知 → FX SIGNAL または使用ブラウザ → 通知を許可 OFF</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="dayPopupBackdrop" class="day-popup-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="dayPopupTitle">
   <div class="day-popup">
     <div class="day-popup-head">
