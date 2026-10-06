@@ -920,7 +920,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push19">
+<meta name="fx-signal-version" content="2026.10.06-push20">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -1221,7 +1221,7 @@ body.force-desktop{
   </section>
 
   <section id="settings" class="hidden">
-<div id="buildMarker" style="font-size:11px;color:#71809a;margin:0 0 10px">Build 2026.10.06-push19</div>
+<div id="buildMarker" style="font-size:11px;color:#71809a;margin:0 0 10px">Build 2026.10.06-push20</div>
 
     <div class="card">
       <h3>設定</h3>
@@ -1291,6 +1291,9 @@ body.force-desktop{
 
 <script id="fx-ui-bootstrap">
 (function(){
+  const BUILD="2026.10.06-push20";
+  const BEGINNER_KEY="fxsignal_beginner";
+
   function showSection(target){
     if(target==="glossary" && document.body.classList.contains("beginner-hidden")){
       target="home";
@@ -1307,27 +1310,92 @@ body.force-desktop{
     try{ localStorage.setItem("fxsignal_active_section", target); }catch(e){}
   }
 
-  window.fxShowSection=showSection;
+  function applyBeginnerIndependent(on){
+    document.body.classList.toggle("beginner-hidden", !on);
 
+    const toggle=document.getElementById("beginnerToggle");
+    if(toggle) toggle.checked=on;
+
+    const badge=document.getElementById("modeBadge");
+    if(badge) badge.textContent=`初心者モード ${on?"ON":"OFF"}`;
+
+    try{ localStorage.setItem(BEGINNER_KEY,on?"1":"0"); }catch(e){}
+
+    if(!on){
+      const glossary=document.getElementById("glossary");
+      if(glossary && !glossary.classList.contains("hidden")) showSection("home");
+    }
+  }
+
+  window.fxShowSection=showSection;
+  window.fxApplyBeginner=applyBeginnerIndependent;
+
+  // Navigation is entirely independent from Supabase/main app initialization.
   document.addEventListener("click", function(event){
-    var button=event.target.closest && event.target.closest("[data-target]");
+    const button=event.target.closest && event.target.closest("[data-target]");
     if(!button) return;
     event.preventDefault();
     showSection(button.dataset.target);
   });
 
-  // Restore the last screen without waiting for Supabase.
   document.addEventListener("DOMContentLoaded", function(){
-    var saved="home";
+    // Restore navigation immediately.
+    let saved="home";
     try{ saved=localStorage.getItem("fxsignal_active_section") || "home"; }catch(e){}
     if(!document.getElementById(saved)) saved="home";
     showSection(saved);
+
+    // Beginner mode is initialized independently from every network/API feature.
+    let beginner=true;
+    try{ beginner=localStorage.getItem(BEGINNER_KEY)!=="0"; }catch(e){}
+    applyBeginnerIndependent(beginner);
+
+    const toggle=document.getElementById("beginnerToggle");
+    if(toggle){
+      toggle.addEventListener("change",function(){
+        applyBeginnerIndependent(!!toggle.checked);
+      });
+    }
+
+    const badge=document.getElementById("modeBadge");
+    if(badge){
+      badge.addEventListener("click",function(){
+        applyBeginnerIndependent(document.body.classList.contains("beginner-hidden"));
+      });
+    }
+
+    // Absolute UI watchdog:
+    // even if another script crashes before loadData(), "接続中" cannot remain forever.
+    setTimeout(function(){
+      const text=document.getElementById("statusText");
+      const box=document.getElementById("dataStatus");
+      if(text && /接続中/.test(text.textContent || "")){
+        if(box) box.className="status error";
+        text.textContent="接続エラー：データ取得処理を開始できませんでした。カレンダー・用語集・設定は利用できます。";
+      }
+    },15000);
+  });
+
+  // If loadData exists after the main script is parsed, schedule it independently.
+  // This still runs if a later top-level initializer throws.
+  window.addEventListener("load", function(){
+    setTimeout(function(){
+      try{
+        if(typeof window.loadData==="function"){
+          window.loadData().catch(function(err){
+            console.error("Independent loadData failed:",err);
+          });
+        }
+      }catch(err){
+        console.error("Independent loadData launch failed:",err);
+      }
+    },0);
   });
 })();
 </script>
 
 <script>
-const FX_SIGNAL_APP_VERSION="2026.10.06-push19";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push20";
 const SUPABASE_URL = "https://sbudokmgkfvrfgslfjyq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_oOmD_eZmTT6ON4BFiavPjQ_xZqe0ivR";
 let events = [];
@@ -1348,6 +1416,18 @@ function todayJst(){return jstParts(new Date()).date}
 function countryFlag(c){
   return flagMap[(c||"").toUpperCase()]||"🌐";
 }
+
+
+// Start Supabase independently from the rest of application initialization.
+// queueMicrotask still runs if a later top-level initializer throws.
+window.loadData=loadData;
+queueMicrotask(()=>{
+  try{
+    loadData().catch(err=>console.error("Early Supabase load failed:",err));
+  }catch(err){
+    console.error("Early Supabase launch failed:",err);
+  }
+});
 
 function flagCode(country){
   const c=String(country||"").toUpperCase();
@@ -3061,7 +3141,7 @@ async function getPushServiceWorkerRegistration(){
 
   if(!reg){
     try{
-      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push19");
+      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push20");
     }catch(err){
       throw new Error(`SERVICE_WORKER_REGISTER_FAILED: ${String(err?.message||err)}`);
     }
@@ -3605,9 +3685,9 @@ function armNotifications(){
   document.addEventListener(type,armNotifications,{once:true,passive:true});
 });
 
-initNotificationControls();
-setInterval(checkScheduledNotifications,15_000);
-setInterval(updateNotificationSchedulerStatus,30_000);
+try{ initNotificationControls(); }catch(err){ console.error("Notification init failed:",err); }
+try{ setInterval(checkScheduledNotifications,15_000); }catch(err){ console.error(err); }
+try{ setInterval(updateNotificationSchedulerStatus,30_000); }catch(err){ console.error(err); }
 
 
 const allNav=[...document.querySelectorAll("[data-target]")], sections=[...document.querySelectorAll("main section")];
@@ -3622,10 +3702,15 @@ function show(target){
 }
 
 const beginnerToggle=document.getElementById("beginnerToggle"), modeBadge=document.getElementById("modeBadge");
-function applyBeginner(on){document.body.classList.toggle("beginner-hidden",!on);beginnerToggle.checked=on;modeBadge.textContent=`初心者モード ${on?"ON":"OFF"}`;localStorage.setItem("fxsignal_beginner",on?"1":"0");if(!on&&!document.getElementById("glossary").classList.contains("hidden"))show("home")}
-applyBeginner(localStorage.getItem("fxsignal_beginner")!=="0");
-beginnerToggle.addEventListener("change",e=>applyBeginner(e.target.checked));
-modeBadge.addEventListener("click",()=>applyBeginner(document.body.classList.contains("beginner-hidden")));
+function applyBeginner(on){
+  if(typeof window.fxApplyBeginner==="function"){
+    window.fxApplyBeginner(on);
+    return;
+  }
+  document.body.classList.toggle("beginner-hidden",!on);
+  if(beginnerToggle) beginnerToggle.checked=on;
+  if(modeBadge) modeBadge.textContent=`初心者モード ${on?"ON":"OFF"}`;
+}
 
 
 document.querySelectorAll(".calendar-view-btn").forEach(btn=>{
@@ -3721,7 +3806,9 @@ viewModeButtons.forEach(btn=>{
 
 applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 
-setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
+try{ setCalendarView(calendarView); }catch(err){ console.error("Calendar init failed:",err); }
+try{ updateMarkets(); setInterval(updateMarkets,60000); }catch(err){ console.error("Market init failed:",err); }
+// loadData() is started independently above; do not couple it to these initializers.
 
 
 
@@ -3949,7 +4036,7 @@ document.getElementById("pwaInstallBtn")?.addEventListener("click",async()=>{
 if("serviceWorker" in navigator){
   window.addEventListener("load",async()=>{
     try{
-      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push19");
+      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push20");
       fxSignalRegistration=reg;
 
       // Clear stale UI first, then inspect actual worker state.

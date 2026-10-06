@@ -1,4 +1,4 @@
-const CACHE_NAME = "fx-signal-static-2026.10.06-push19";
+const CACHE_NAME = "fx-signal-static-2026.10.06-push20";
 
 const STATIC_ASSETS = [
   "./manifest.json",
@@ -33,10 +33,8 @@ self.addEventListener("message", event => {
 self.addEventListener("fetch", event => {
   const req=event.request;
   if(req.method!=="GET") return;
-
   const url=new URL(req.url);
 
-  // Never cache HTML/navigation or version checks.
   if(
     req.mode==="navigate" ||
     url.pathname.endsWith("/index.html") ||
@@ -48,24 +46,17 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  // Never cache Supabase/API traffic.
-  if(
-    url.hostname.endsWith("supabase.co") ||
-    url.hostname.includes("xoomar") ||
-    url.hostname.includes("financecalendar") ||
-    url.hostname.includes("helious")
-  ){
+  if(url.hostname.endsWith("supabase.co")){
     event.respondWith(fetch(req,{cache:"no-store"}));
     return;
   }
 
-  // Cache only same-origin static assets.
   if(url.origin===self.location.origin){
     event.respondWith(
       caches.match(req).then(cached => cached || fetch(req).then(response => {
         if(response?.ok){
           const copy=response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(req,copy));
+          caches.open(CACHE_NAME).then(cache=>cache.put(req,copy));
         }
         return response;
       }))
@@ -85,8 +76,7 @@ self.addEventListener("push", event => {
       badge:"./icon-192.png",
       tag:data.tag || "fxsignal-event",
       renotify:true,
-      timestamp:Date.now(),
-      data:{url:data.url || "./",eventKey:data.eventKey || null}
+      data:{url:data.url || "./"}
     })
   );
 });
