@@ -920,7 +920,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push23">
+<meta name="fx-signal-version" content="2026.10.06-push25">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -1166,6 +1166,8 @@ body.force-desktop{
             <button id="requestNotificationPermissionBtn" class="mini primary" type="button">通知をONにする</button>
             <button id="revokeNotificationHelpBtn" class="mini" type="button">通知許可を解除する方法</button>
             <button id="testPushConnectionBtn" class="mini" type="button">Push通信をテスト</button>
+            <button id="testSystemSoundBtn" class="mini" type="button">端末通知音をテスト</button>
+            <button id="systemSoundHelpBtn" class="mini" type="button">通知音をONにする方法</button>
             <button id="testRealNotificationBtn" class="mini" type="button">本番通知をテスト</button>
           </div>
           <div id="notificationSetupStatus" class="notification-setup-status">状態を確認中...</div>
@@ -1222,7 +1224,7 @@ body.force-desktop{
   </section>
 
   <section id="settings" class="hidden">
-<div id="buildMarker" style="font-size:11px;color:#71809a;margin:0 0 10px">Build 2026.10.06-push23</div>
+<div id="buildMarker" style="font-size:11px;color:#71809a;margin:0 0 10px">Build 2026.10.06-push25</div>
 
     <div class="card">
       <h3>設定</h3>
@@ -1393,10 +1395,13 @@ body.force-desktop{
     },0);
   });
 })();
+document.addEventListener("keydown",(event)=>{
+  if(event.key==="Escape") closeSystemSoundHelp();
+});
 </script>
 
 <script>
-const FX_SIGNAL_APP_VERSION="2026.10.06-push23";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push25";
 const SUPABASE_URL = "https://sbudokmgkfvrfgslfjyq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_oOmD_eZmTT6ON4BFiavPjQ_xZqe0ivR";
 let events = [];
@@ -3142,7 +3147,7 @@ async function getPushServiceWorkerRegistration(){
 
   if(!reg){
     try{
-      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push23");
+      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push25");
     }catch(err){
       throw new Error(`SERVICE_WORKER_REGISTER_FAILED: ${String(err?.message||err)}`);
     }
@@ -3676,11 +3681,135 @@ async function testRealNotification(){
   updateNotificationSetupStatus();
 }
 
+
+function detectPhonePlatform(){
+  const ua=navigator.userAgent || "";
+  if(/iPhone|iPad|iPod/i.test(ua)) return "ios";
+  if(/Android/i.test(ua)) return "android";
+  if(/Windows/i.test(ua)) return "windows";
+  if(/Macintosh|Mac OS X/i.test(ua)) return "mac";
+  return "other";
+}
+
+function openSystemSoundHelp(){
+  const modal=document.getElementById("systemSoundHelpModal");
+  const body=document.getElementById("systemSoundHelpBody");
+  if(!modal || !body) return;
+
+  const platform=detectPhonePlatform();
+
+  let htmlText="";
+  if(platform==="ios"){
+    htmlText=`
+      <p><strong>iPhone / iPad</strong></p>
+      <ol>
+        <li>「設定」アプリを開く</li>
+        <li>「通知」を開く</li>
+        <li>FX SIGNAL（またはホーム画面に追加したWebアプリ）を選ぶ</li>
+        <li>「通知を許可」をON</li>
+        <li>「サウンド」をON</li>
+      </ol>
+      <p class="muted">集中モードや消音モード中は音が鳴らない場合があります。</p>`;
+  }else if(platform==="android"){
+    htmlText=`
+      <p><strong>Android</strong></p>
+      <ol>
+        <li>「設定」を開く</li>
+        <li>「通知」→「アプリの通知」を開く</li>
+        <li>FX SIGNAL、または利用中のChrome/PWAを選ぶ</li>
+        <li>通知をONにする</li>
+        <li>「サウンド」または通知カテゴリの音をONにする</li>
+      </ol>
+      <p class="muted">機種によって「通知カテゴリ」「通知チャンネル」という名前の場合があります。</p>`;
+  }else if(platform==="windows"){
+    htmlText=`
+      <p><strong>Windows</strong></p>
+      <ol>
+        <li>設定 → システム → 通知</li>
+        <li>FX SIGNAL またはブラウザを選択</li>
+        <li>通知音を鳴らす設定をON</li>
+      </ol>`;
+  }else if(platform==="mac"){
+    htmlText=`
+      <p><strong>Mac</strong></p>
+      <ol>
+        <li>システム設定 → 通知</li>
+        <li>FX SIGNAL または利用中のブラウザを選ぶ</li>
+        <li>「通知のサウンドを再生」をON</li>
+      </ol>`;
+  }else{
+    htmlText=`
+      <p>端末の「設定」→「通知」からFX SIGNALまたは利用中のブラウザを選び、通知音をONにしてください。</p>`;
+  }
+
+  body.innerHTML=htmlText;
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden","false");
+}
+
+function closeSystemSoundHelp(){
+  const modal=document.getElementById("systemSoundHelpModal");
+  if(!modal) return;
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden","true");
+}
+
+async function testSystemNotificationSound(){
+  const btn=document.getElementById("testSystemSoundBtn");
+  if(btn){
+    btn.disabled=true;
+    btn.textContent="通知中…";
+  }
+
+  try{
+    if(!("Notification" in window)){
+      throw new Error("この端末は通知APIに対応していません");
+    }
+
+    if(Notification.permission!=="granted"){
+      const permission=await Notification.requestPermission();
+      if(permission!=="granted"){
+        throw new Error("通知が許可されていません");
+      }
+    }
+
+    if(!("serviceWorker" in navigator)){
+      throw new Error("Service Workerに対応していません");
+    }
+
+    const reg=await navigator.serviceWorker.ready;
+
+    await reg.showNotification("FX SIGNAL 通知音テスト",{
+      body:"この通知で端末の通知音が鳴れば設定OKです。",
+      icon:"./icon-192.png",
+      badge:"./icon-192.png",
+      silent:false,
+      vibrate:[200,100,200],
+      tag:`fxsignal-sound-test-${Date.now()}`,
+      renotify:true,
+      data:{url:"./"}
+    });
+
+    setPushDiagnostic("端末通知音テストを送信しました。音が鳴れば設定OKです。");
+  }catch(err){
+    setPushDiagnostic(`端末通知音テスト失敗：${String(err?.message||err)}`);
+  }finally{
+    if(btn){
+      btn.disabled=false;
+      btn.textContent="端末通知音をテスト";
+    }
+  }
+}
+
 function initNotificationControls(){
   applyNotifyPrefs();
 
   document.getElementById("requestNotificationPermissionBtn")?.addEventListener("click",toggleBackgroundPush);
   document.getElementById("testPushConnectionBtn")?.addEventListener("click",testPushManagerConnection);
+  document.getElementById("testSystemSoundBtn")?.addEventListener("click",testSystemNotificationSound);
+  document.getElementById("systemSoundHelpBtn")?.addEventListener("click",openSystemSoundHelp);
+  document.getElementById("systemSoundHelpCloseBtn")?.addEventListener("click",closeSystemSoundHelp);
+  document.querySelector("[data-close-system-sound-help]")?.addEventListener("click",closeSystemSoundHelp);
   document.getElementById("testRealNotificationBtn")?.addEventListener("click",testRealNotification);
   document.getElementById("notificationToastClose")?.addEventListener("click",e=>{
     e.preventDefault();
@@ -4091,7 +4220,7 @@ document.getElementById("pwaInstallBtn")?.addEventListener("click",async()=>{
 if("serviceWorker" in navigator){
   window.addEventListener("load",async()=>{
     try{
-      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push23");
+      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push25");
       fxSignalRegistration=reg;
 
       // Clear stale UI first, then inspect actual worker state.
@@ -4217,6 +4346,18 @@ updatePwaInstallUi();
     <div class="event-modal-section">
       <strong>FXではどう見る？</strong>
       <p id="eventModalFx"></p>
+    </div>
+  </div>
+</div>
+
+
+<div id="systemSoundHelpModal" class="modal hidden" aria-hidden="true">
+  <div class="modal-backdrop" data-close-system-sound-help="1"></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="systemSoundHelpTitle">
+    <button id="systemSoundHelpCloseBtn" class="modal-close" type="button" aria-label="閉じる">×</button>
+    <h3 id="systemSoundHelpTitle">スマホの通知音をONにする</h3>
+    <div id="systemSoundHelpBody" class="modal-body">
+      <p>端末の通知音は、FX SIGNALではなくスマホOS側で管理されています。</p>
     </div>
   </div>
 </div>

@@ -1,4 +1,4 @@
-const CACHE_NAME = "fx-signal-static-2026.10.06-push23";
+const CACHE_NAME = "fx-signal-static-2026.10.06-push25";
 
 const STATIC_ASSETS = [
   "./manifest.json",
@@ -66,18 +66,47 @@ self.addEventListener("fetch", event => {
 
 self.addEventListener("push", event => {
   let data={};
-  try{ data=event.data ? event.data.json() : {}; }
-  catch{ data={title:"FX SIGNAL",body:event.data ? event.data.text() : "経済イベントのお知らせ"}; }
+
+  try{
+    data=event.data ? event.data.json() : {};
+  }catch{
+    data={
+      title:"FX SIGNAL",
+      body:event.data ? event.data.text() : "経済イベントのお知らせ"
+    };
+  }
+
+  const notificationOptions={
+    body:data.body || "経済イベントの時間が近づいています",
+    icon:"./icon-192.png",
+    badge:"./icon-192.png",
+
+    // Keep the notification audible when the OS allows notification sounds.
+    // The actual sound itself is controlled by Android/iOS notification settings.
+    silent:false,
+
+    // Helpful on Android; unsupported platforms simply ignore this.
+    vibrate:[200,100,200],
+
+    // Reusing the same event tag can still alert again for a later timing
+    // such as 30 min -> 5 min -> event time.
+    tag:data.tag || `fxsignal-${data.eventKey || Date.now()}`,
+    renotify:true,
+
+    timestamp:Date.now(),
+
+    data:{
+      url:data.url || "./",
+      eventKey:data.eventKey || null,
+      timingMinutes:data.timingMinutes ?? null
+    }
+  };
 
   event.waitUntil(
-    self.registration.showNotification(data.title || "FX SIGNAL",{
-      body:data.body || "経済イベントの時間が近づいています",
-      icon:"./icon-192.png",
-      badge:"./icon-192.png",
-      tag:data.tag || "fxsignal-event",
-      renotify:true,
-      data:{url:data.url || "./"}
-    })
+    self.registration.showNotification(
+      data.title || "FX SIGNAL",
+      notificationOptions
+    )
   );
 });
 
