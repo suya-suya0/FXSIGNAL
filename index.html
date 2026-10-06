@@ -920,7 +920,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push1">
+<meta name="fx-signal-version" content="2026.10.06-push3">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -1163,12 +1163,12 @@ body.force-desktop{
           <div class="notification-setup-title">通知を使える状態にする</div>
           <div class="sub">最初に一度だけ、通知許可と音の確認をしてください。</div>
           <div class="notification-setup-actions">
-            <button id="requestNotificationPermissionBtn" class="mini primary" type="button">通知を許可する</button>
+            <button id="requestNotificationPermissionBtn" class="mini primary" type="button">通知をONにする</button>
             <button id="testRealNotificationBtn" class="mini" type="button">本番通知をテスト</button>
           </div>
           <div id="notificationSetupStatus" class="notification-setup-status">状態を確認中...</div>
           <div id="backgroundPushStatus" class="notification-setup-status">
-            バックグラウンド通知：通知を許可すると、この端末をSupabaseへ登録します。
+            バックグラウンド通知：ON/OFFはこの画面からいつでも切り替えられます。
           </div>
         </div>
       </div>
@@ -2839,6 +2839,85 @@ function pushPrefsPayload(sub){const prefs=loadNotifyPrefs();const json=sub.toJS
 function updateBackgroundPushStatus(state=null){const el=document.getElementById("backgroundPushStatus");if(!el)return;if(!("PushManager" in window)){el.textContent="バックグラウンド通知：このブラウザではPush通知に対応していません";return}if(!("Notification" in window)||Notification.permission!=="granted"){el.textContent="バックグラウンド通知：通知を許可すると設定できます";return}if(FX_SIGNAL_VAPID_PUBLIC_KEY==="BIcmlxlNJyM5gtWPfEZiu2Bb0EQSzUi3G-_Ks7YCSr_Z8HughBj0DKWb7pMhhJStCcobDpRPBw2AwNPpe6RqU7Y"){el.textContent="バックグラウンド通知：VAPID公開鍵を設定してください";return}el.textContent=state===true?"バックグラウンド通知：登録済み。アプリを閉じていても受信できます":state===false?"バックグラウンド通知：登録に失敗しました":"バックグラウンド通知：登録状態を確認中..."}
 async function getOrCreatePushSubscription(){const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();if(sub)return sub;if(FX_SIGNAL_VAPID_PUBLIC_KEY==="BIcmlxlNJyM5gtWPfEZiu2Bb0EQSzUi3G-_Ks7YCSr_Z8HughBj0DKWb7pMhhJStCcobDpRPBw2AwNPpe6RqU7Y")throw new Error("VAPID_PUBLIC_KEY_NOT_CONFIGURED");return reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(FX_SIGNAL_VAPID_PUBLIC_KEY)})}
 async function savePushSubscriptionToSupabase(sub){const r=await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?on_conflict=endpoint`,{method:"POST",headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(pushPrefsPayload(sub))});if(!r.ok)throw new Error(`Push subscription save failed: ${r.status}`)}
+
+async function disableBackgroundPush(){
+  try{
+    if(!("serviceWorker" in navigator) || !("PushManager" in window)){
+      updateBackgroundPushStatus(false);
+      return;
+    }
+
+    const reg=await navigator.serviceWorker.ready;
+    const sub=await reg.pushManager.getSubscription();
+
+    if(sub){
+      try{
+        await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(sub.endpoint)}`,{
+          method:"PATCH",
+          headers:{
+            "apikey":SUPABASE_KEY,
+            "Authorization":`Bearer ${SUPABASE_KEY}`,
+            "Content-Type":"application/json",
+            "Prefer":"return=minimal"
+          },
+          body:JSON.stringify({enabled:false})
+        });
+      }catch(err){
+        console.warn("Failed to disable push subscription in Supabase:",err);
+      }
+
+      try{
+        await sub.unsubscribe();
+      }catch(err){
+        console.warn("Failed to unsubscribe push subscription:",err);
+      }
+    }
+
+    const prefs=loadNotifyPrefs();
+    prefs.master=false;
+    localStorage.setItem(NOTIFY_PREFS_KEY,JSON.stringify(prefs));
+
+    const master=document.getElementById("notifyMaster");
+    if(master) master.checked=false;
+
+    updateBackgroundPushStatus(false);
+    await updateNotificationSetupStatus();
+    updateNotificationSchedulerStatus();
+  }catch(err){
+    console.warn("disableBackgroundPush failed:",err);
+  }
+}
+
+async function toggleBackgroundPush(){
+  try{
+    if(!("Notification" in window)){
+      updateNotificationSetupStatus();
+      return;
+    }
+
+    const reg=("serviceWorker" in navigator) ? await navigator.serviceWorker.ready : null;
+    const currentSub=reg?.pushManager ? await reg.pushManager.getSubscription() : null;
+
+    if(currentSub){
+      await disableBackgroundPush();
+      return;
+    }
+
+    await registerBackgroundPush();
+
+    const prefs=loadNotifyPrefs();
+    prefs.master=true;
+    localStorage.setItem(NOTIFY_PREFS_KEY,JSON.stringify(prefs));
+
+    const master=document.getElementById("notifyMaster");
+    if(master) master.checked=true;
+
+    updateNotificationSchedulerStatus();
+  }catch(err){
+    console.warn("toggleBackgroundPush failed:",err);
+  }
+}
+
 async function registerBackgroundPush(){try{armNotifications();if(!("Notification" in window)||!("PushManager" in window)){updateBackgroundPushStatus(false);return}if(Notification.permission!=="granted"){const p=await Notification.requestPermission();if(p!=="granted"){updateNotificationSetupStatus();updateBackgroundPushStatus(false);return}}const sub=await getOrCreatePushSubscription();await savePushSubscriptionToSupabase(sub);updateBackgroundPushStatus(true);updateNotificationSetupStatus()}catch(err){console.warn("Background push registration failed:",err);updateBackgroundPushStatus(false)}}
 async function syncPushPreferences(){try{if(!("serviceWorker" in navigator)||!("PushManager" in window))return;if(!("Notification" in window)||Notification.permission!=="granted")return;const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();if(!sub)return;const r=await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(sub.endpoint)}`,{method:"PATCH",headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify(pushPrefsPayload(sub))});if(!r.ok)throw new Error(`Push preference sync failed: ${r.status}`);updateBackgroundPushStatus(true)}catch(err){console.warn(err);updateBackgroundPushStatus(false)}}
 async function inspectBackgroundPush(){try{if(!("serviceWorker" in navigator)||!("PushManager" in window)){updateBackgroundPushStatus(false);return}const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();updateBackgroundPushStatus(!!sub)}catch{updateBackgroundPushStatus(false)}}
@@ -2850,10 +2929,23 @@ function notificationPermissionLabel(){
   return "通知：まだ許可されていません";
 }
 
-function updateNotificationSetupStatus(){
+async function updateNotificationSetupStatus(){
   const el=document.getElementById("notificationSetupStatus");
   const btn=document.getElementById("requestNotificationPermissionBtn");
   if(!el) return;
+
+  let hasPushSubscription=false;
+
+  if(
+    "serviceWorker" in navigator &&
+    "PushManager" in window &&
+    Notification.permission==="granted"
+  ){
+    try{
+      const reg=await navigator.serviceWorker.ready;
+      hasPushSubscription=!!(await reg.pushManager.getSubscription());
+    }catch{}
+  }
 
   const permissionText=notificationPermissionLabel();
   const audioText=notificationsArmed
@@ -2862,21 +2954,32 @@ function updateNotificationSetupStatus(){
 
   el.textContent=`${permissionText} ／ ${audioText}`;
 
-  if(btn){
-    if(!("Notification" in window)){
-      btn.disabled=true;
-      btn.textContent="ブラウザ通知非対応";
-    }else if(Notification.permission==="granted"){
-      btn.disabled=true;
-      btn.textContent="通知は許可済み";
-    }else if(Notification.permission==="denied"){
-      btn.disabled=true;
-      btn.textContent="通知がブロック中";
-    }else{
-      btn.disabled=false;
-      btn.textContent="通知を許可する";
-    }
+  if(!btn) return;
+
+  if(!("Notification" in window)){
+    btn.disabled=true;
+    btn.textContent="ブラウザ通知非対応";
+    return;
   }
+
+  if(Notification.permission==="denied"){
+    btn.disabled=true;
+    btn.textContent="通知がブロック中";
+    return;
+  }
+
+  if(hasPushSubscription){
+    btn.disabled=false;
+    btn.textContent="通知をOFFにする";
+    btn.classList.remove("primary");
+    return;
+  }
+
+  btn.disabled=false;
+  btn.classList.add("primary");
+  btn.textContent=Notification.permission==="granted"
+    ? "通知をONにする"
+    : "通知を許可してONにする";
 }
 
 async function requestNotificationPermission(){
@@ -2938,7 +3041,7 @@ async function testRealNotification(){
 function initNotificationControls(){
   applyNotifyPrefs();
 
-  document.getElementById("requestNotificationPermissionBtn")?.addEventListener("click",registerBackgroundPush);
+  document.getElementById("requestNotificationPermissionBtn")?.addEventListener("click",toggleBackgroundPush);
   document.getElementById("testRealNotificationBtn")?.addEventListener("click",testRealNotification);
   document.getElementById("notificationToastClose")?.addEventListener("click",e=>{
     e.preventDefault();
@@ -3110,7 +3213,7 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
 
-const FX_SIGNAL_APP_VERSION="2026.10.06-push1";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push3";
 
 let fxSignalLatestVersion = FX_SIGNAL_APP_VERSION;
 
