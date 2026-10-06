@@ -1,4 +1,4 @@
-const CACHE_NAME = "fx-signal-v1";
+const CACHE_NAME = "fx-signal-push2";
 const APP_SHELL = [
   "./",
   "./index.html",

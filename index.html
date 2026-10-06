@@ -920,7 +920,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.05-v7">
+<meta name="fx-signal-version" content="2026.10.06-push1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -3110,7 +3110,7 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
 
-const FX_SIGNAL_APP_VERSION="2026.10.05-v7";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push1";
 
 let fxSignalLatestVersion = FX_SIGNAL_APP_VERSION;
 
@@ -3127,7 +3127,16 @@ async function fetchLatestAppVersion(){
 
 async function refreshUpdateBannerByVersion(){
   fxSignalLatestVersion=await fetchLatestAppVersion();
-  const needsUpdate=fxSignalLatestVersion!==FX_SIGNAL_APP_VERSION;
+
+  const normalizeVersion=v=>String(v||"")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g,"")
+    .replace(/-ver(?=\d)/g,"-v");
+
+  const current=normalizeVersion(FX_SIGNAL_APP_VERSION);
+  const latest=normalizeVersion(fxSignalLatestVersion);
+  const needsUpdate=!!latest && latest!==current;
 
   if(needsUpdate){
     const status=document.getElementById("appUpdateStatus");
