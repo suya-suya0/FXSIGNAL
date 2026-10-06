@@ -920,7 +920,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push21">
+<meta name="fx-signal-version" content="2026.10.06-push22">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -1222,7 +1222,7 @@ body.force-desktop{
   </section>
 
   <section id="settings" class="hidden">
-<div id="buildMarker" style="font-size:11px;color:#71809a;margin:0 0 10px">Build 2026.10.06-push21</div>
+<div id="buildMarker" style="font-size:11px;color:#71809a;margin:0 0 10px">Build 2026.10.06-push22</div>
 
     <div class="card">
       <h3>設定</h3>
@@ -1396,7 +1396,7 @@ body.force-desktop{
 </script>
 
 <script>
-const FX_SIGNAL_APP_VERSION="2026.10.06-push21";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push22";
 const SUPABASE_URL = "https://sbudokmgkfvrfgslfjyq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_oOmD_eZmTT6ON4BFiavPjQ_xZqe0ivR";
 let events = [];
@@ -3142,7 +3142,7 @@ async function getPushServiceWorkerRegistration(){
 
   if(!reg){
     try{
-      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push21");
+      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push22");
     }catch(err){
       throw new Error(`SERVICE_WORKER_REGISTER_FAILED: ${String(err?.message||err)}`);
     }
@@ -3208,13 +3208,14 @@ async function invokePushManager(payload){
   const timeoutId=setTimeout(()=>controller.abort(),12000);
 
   try{
+    // text/plain + no custom headers => "simple request".
+    // This intentionally avoids the browser CORS preflight that caused Failed to fetch.
     const response=await fetch(PUSH_MANAGER_FUNCTION_URL,{
       method:"POST",
       mode:"cors",
       cache:"no-store",
       headers:{
-        "Content-Type":"application/json",
-        "apikey":SUPABASE_KEY
+        "Content-Type":"text/plain;charset=UTF-8"
       },
       body:JSON.stringify(payload),
       signal:controller.signal
@@ -3230,13 +3231,17 @@ async function invokePushManager(payload){
 
     if(!response.ok){
       throw new Error(
-        `PUSH_FUNCTION_${response.status}: ${result?.detail || result?.error || rawText || response.statusText}`
+        `PUSH_FUNCTION_${response.status}: ${
+          result?.detail || result?.error || rawText || response.statusText
+        }`
       );
     }
 
     if(!result?.ok){
       throw new Error(
-        `PUSH_FUNCTION_BAD_RESPONSE: ${result?.detail || result?.error || rawText || "unknown error"}`
+        `PUSH_FUNCTION_BAD_RESPONSE: ${
+          result?.detail || result?.error || rawText || "unknown error"
+        }`
       );
     }
 
@@ -3249,9 +3254,13 @@ async function invokePushManager(payload){
 
     const msg=String(err?.message || err);
 
-    if(msg==="Failed to fetch" || msg.includes("NetworkError") || msg.includes("Load failed")){
+    if(
+      msg==="Failed to fetch" ||
+      msg.includes("NetworkError") ||
+      msg.includes("Load failed")
+    ){
       throw new Error(
-        "PUSH_FUNCTION_NETWORK: Edge Functionへ接続できません。Verify JWTをOFF・Deploy済み・CORS設定を確認してください"
+        "PUSH_FUNCTION_NETWORK: Edge Functionへ到達できません。Function名・Deploy・Verify JWT OFFを確認してください"
       );
     }
 
@@ -4082,7 +4091,7 @@ document.getElementById("pwaInstallBtn")?.addEventListener("click",async()=>{
 if("serviceWorker" in navigator){
   window.addEventListener("load",async()=>{
     try{
-      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push21");
+      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push22");
       fxSignalRegistration=reg;
 
       // Clear stale UI first, then inspect actual worker state.
