@@ -920,7 +920,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push9">
+<meta name="fx-signal-version" content="2026.10.06-push10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -2918,6 +2918,7 @@ async function getOrCreatePushSubscription(){
 }
 
 async function savePushSubscriptionToSupabase(sub){
+  const payload=pushPrefsPayload(sub);
   setPushDiagnostic("Supabaseへ端末登録しています…");
 
   const response=await withTimeout(
@@ -2927,22 +2928,33 @@ async function savePushSubscriptionToSupabase(sub){
         apikey:SUPABASE_KEY,
         Authorization:`Bearer ${SUPABASE_KEY}`,
         "Content-Type":"application/json",
-        Prefer:"resolution=merge-duplicates,return=minimal"
+        Prefer:"resolution=merge-duplicates,return=representation"
       },
-      body:JSON.stringify(pushPrefsPayload(sub))
+      body:JSON.stringify(payload)
     }),
     10000,
     "SUPABASE_SAVE"
   );
 
+  const bodyText=await response.text();
+
   if(!response.ok){
-    let detail="";
-    try{ detail=await response.text(); }catch{}
-    throw new Error(`SUPABASE_SAVE_FAILED_${response.status}${detail?": "+detail:""}`);
+    throw new Error(
+      `SUPABASE_SAVE_FAILED_${response.status}: ${bodyText || response.statusText}`
+    );
   }
 
-  setPushDiagnostic("Supabaseへの端末登録が完了しました");
-  return true;
+  let saved=[];
+  try{
+    saved=bodyText ? JSON.parse(bodyText) : [];
+  }catch{}
+
+  if(!Array.isArray(saved) || saved.length===0){
+    throw new Error("SUPABASE_SAVE_NO_ROW_RETURNED");
+  }
+
+  setPushDiagnostic("Supabaseへの端末登録を確認しました");
+  return saved[0];
 }
 
 async function disableBackgroundPush(){
@@ -3003,11 +3015,23 @@ async function enableBackgroundPush(){
     armNotifications();
 
     if(!("Notification" in window)) throw new Error("NOTIFICATION_API_UNSUPPORTED");
+
     if(Notification.permission!=="granted"){
       const permission=await Notification.requestPermission();
-      if(permission!=="granted") throw new Error(`NOTIFICATION_PERMISSION_${permission.toUpperCase()}`);
+      if(permission!=="granted"){
+        throw new Error(`NOTIFICATION_PERMISSION_${permission.toUpperCase()}`);
+      }
     }
 
+    const sub=await getOrCreatePushSubscription();
+
+    // Use current prefs, but force enabled=true only in payload being saved.
+    const savedRow=await savePushSubscriptionToSupabase(sub);
+    if(!savedRow?.id){
+      throw new Error("SUPABASE_SAVE_VERIFICATION_FAILED");
+    }
+
+    // Only now mark local app state as ON.
     const prefs=loadNotifyPrefs();
     prefs.master=true;
     localStorage.setItem(NOTIFY_PREFS_KEY,JSON.stringify(prefs));
@@ -3015,25 +3039,37 @@ async function enableBackgroundPush(){
     const master=document.getElementById("notifyMaster");
     if(master) master.checked=true;
 
-    const sub=await getOrCreatePushSubscription();
-    await savePushSubscriptionToSupabase(sub);
-
     updateNotificationSchedulerStatus();
     updateBackgroundPushStatus(true);
     await updateNotificationSetupStatus();
-    setPushDiagnostic("通知ON：この端末はPush通知に登録済みです");
+
+    setPushDiagnostic("通知ON：Supabaseへの端末登録まで完了しました");
     return true;
   }catch(err){
     const msg=String(err?.message||err);
     console.warn("enableBackgroundPush failed:",err);
 
+    // Ensure local state does NOT pretend to be enabled when server registration failed.
+    const prefs=loadNotifyPrefs();
+    prefs.master=false;
+    localStorage.setItem(NOTIFY_PREFS_KEY,JSON.stringify(prefs));
+
+    const master=document.getElementById("notifyMaster");
+    if(master) master.checked=false;
+
     let friendly=`登録に失敗しました：${msg}`;
-    if(msg.includes("SERVICE_WORKER_READY_TIMEOUT")) friendly="Service Workerの準備がタイムアウトしました。アプリを完全に閉じて開き直してください。";
-    else if(msg.includes("GET_SUBSCRIPTION_TIMEOUT")) friendly="Push通知の登録状態確認がタイムアウトしました。";
-    else if(msg.includes("PUSH_SUBSCRIBE_TIMEOUT")) friendly="Push購読の作成がタイムアウトしました。";
-    else if(msg.includes("SUPABASE_SAVE_TIMEOUT")) friendly="Supabaseへの登録がタイムアウトしました。";
-    else if(msg.includes("SUPABASE_SAVE_FAILED_401") || msg.includes("SUPABASE_SAVE_FAILED_403")) friendly="SupabaseのRLS/権限で登録が拒否されました。";
-    else if(msg.includes("SUPABASE_SAVE_FAILED")) friendly=`Supabase登録に失敗しました：${msg}`;
+
+    if(msg.includes("SUPABASE_SAVE_FAILED_401") || msg.includes("SUPABASE_SAVE_FAILED_403")){
+      friendly="Supabaseに拒否されました。RLSポリシーかAPI権限を確認してください。";
+    }else if(msg.includes("SUPABASE_SAVE_FAILED_400")){
+      friendly=`Supabaseへの保存内容に問題があります：${msg}`;
+    }else if(msg.includes("SUPABASE_SAVE_NO_ROW_RETURNED")){
+      friendly="Supabaseから保存済み行を確認できませんでした。";
+    }else if(msg.includes("SUPABASE_SAVE_TIMEOUT")){
+      friendly="Supabaseへの登録がタイムアウトしました。";
+    }else if(msg.includes("PUSH_SUBSCRIBE_TIMEOUT")){
+      friendly="Push購読の作成がタイムアウトしました。";
+    }
 
     setPushDiagnostic(friendly);
     updateBackgroundPushStatus(false);
@@ -3444,7 +3480,7 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
 
-const FX_SIGNAL_APP_VERSION="2026.10.06-push9";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push10";
 
 let fxSignalLatestVersion = FX_SIGNAL_APP_VERSION;
 
