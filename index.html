@@ -920,7 +920,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push7">
+<meta name="fx-signal-version" content="2026.10.06-push8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -1168,6 +1168,7 @@ body.force-desktop{
             <button id="testRealNotificationBtn" class="mini" type="button">本番通知をテスト</button>
           </div>
           <div id="notificationSetupStatus" class="notification-setup-status">状態を確認中...</div>
+          <div id="pushDiagnosticStatus" class="notification-setup-status" style="color:#f2cf79"></div>
           <div id="backgroundPushStatus" class="notification-setup-status">
             バックグラウンド通知：ON/OFFはこの画面からいつでも切り替えられます。
           </div>
@@ -2853,8 +2854,61 @@ function updateNotificationSchedulerStatus(){
 function urlBase64ToUint8Array(base64String){const padding="=".repeat((4-base64String.length%4)%4);const base64=(base64String+padding).replace(/-/g,"+").replace(/_/g,"/");const raw=atob(base64);return Uint8Array.from([...raw].map(ch=>ch.charCodeAt(0)))}
 function pushPrefsPayload(sub){const prefs=loadNotifyPrefs();const json=sub.toJSON();return {endpoint:sub.endpoint,p256dh:json.keys?.p256dh||"",auth:json.keys?.auth||"",enabled:!!prefs.master,notify_importance_1:!!prefs.importance1,notify_importance_2:!!prefs.importance2,notify_importance_3:!!prefs.importance3,notify_rates:!!prefs.rates,notify_central_bank:!!prefs.centralBank,notify_speech:!!prefs.speech,notify_60:prefs.minutes.includes(60),notify_30:prefs.minutes.includes(30),notify_5:prefs.minutes.includes(5),notify_0:prefs.minutes.includes(0),user_agent:navigator.userAgent}}
 function updateBackgroundPushStatus(state=null){const el=document.getElementById("backgroundPushStatus");if(!el)return;if(!("PushManager" in window)){el.textContent="バックグラウンド通知：このブラウザではPush通知に対応していません";return}if(!("Notification" in window)||Notification.permission!=="granted"){el.textContent="バックグラウンド通知：通知を許可すると設定できます";return}if(FX_SIGNAL_VAPID_PUBLIC_KEY==="BIcmlxlNJyM5gtWPfEZiu2Bb0EQSzUi3G-_Ks7YCSr_Z8HughBj0DKWb7pMhhJStCcobDpRPBw2AwNPpe6RqU7Y"){el.textContent="バックグラウンド通知：VAPID公開鍵を設定してください";return}el.textContent=state===true?"バックグラウンド通知：登録済み。アプリを閉じていても受信できます":state===false?"バックグラウンド通知：登録に失敗しました":"バックグラウンド通知：登録状態を確認中..."}
-async function getOrCreatePushSubscription(){const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();if(sub)return sub;if(FX_SIGNAL_VAPID_PUBLIC_KEY==="BIcmlxlNJyM5gtWPfEZiu2Bb0EQSzUi3G-_Ks7YCSr_Z8HughBj0DKWb7pMhhJStCcobDpRPBw2AwNPpe6RqU7Y")throw new Error("VAPID_PUBLIC_KEY_NOT_CONFIGURED");return reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(FX_SIGNAL_VAPID_PUBLIC_KEY)})}
-async function savePushSubscriptionToSupabase(sub){const r=await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?on_conflict=endpoint`,{method:"POST",headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(pushPrefsPayload(sub))});if(!r.ok)throw new Error(`Push subscription save failed: ${r.status}`)}
+async function getOrCreatePushSubscription(){
+  setPushDiagnostic("");
+
+  if(!("serviceWorker" in navigator)) throw new Error("SERVICE_WORKER_UNSUPPORTED");
+  if(!("PushManager" in window)) throw new Error("PUSH_MANAGER_UNSUPPORTED");
+
+  const reg=await navigator.serviceWorker.ready;
+  let sub=await reg.pushManager.getSubscription();
+
+  if(sub){
+    setPushDiagnostic("既存のPush購読を確認しました");
+    return sub;
+  }
+
+  if(
+    !FX_SIGNAL_VAPID_PUBLIC_KEY ||
+    FX_SIGNAL_VAPID_PUBLIC_KEY==="REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY"
+  ){
+    throw new Error("VAPID_PUBLIC_KEY_NOT_CONFIGURED");
+  }
+
+  setPushDiagnostic("Push購読を作成しています…");
+  sub=await reg.pushManager.subscribe({
+    userVisibleOnly:true,
+    applicationServerKey:urlBase64ToUint8Array(FX_SIGNAL_VAPID_PUBLIC_KEY)
+  });
+
+  setPushDiagnostic("Push購読を作成しました");
+  return sub;
+}
+
+async function savePushSubscriptionToSupabase(sub){
+  const payload=pushPrefsPayload(sub);
+  setPushDiagnostic("Supabaseへ端末登録しています…");
+
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?on_conflict=endpoint`,{
+    method:"POST",
+    headers:{
+      apikey:SUPABASE_KEY,
+      Authorization:`Bearer ${SUPABASE_KEY}`,
+      "Content-Type":"application/json",
+      Prefer:"resolution=merge-duplicates,return=minimal"
+    },
+    body:JSON.stringify(payload)
+  });
+
+  if(!r.ok){
+    let detail="";
+    try{ detail=await r.text(); }catch{}
+    throw new Error(`SUPABASE_SAVE_FAILED_${r.status}${detail?": "+detail:""}`);
+  }
+
+  setPushDiagnostic("Supabaseへの端末登録が完了しました");
+  return true;
+}
 
 async function disableBackgroundPush(){
   try{
@@ -2910,18 +2964,17 @@ async function disableBackgroundPush(){
 
 async function enableBackgroundPush(){
   try{
+    setPushDiagnostic("通知ONの準備をしています…");
     armNotifications();
 
-    if(!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)){
-      await updateNotificationSetupStatus();
-      return false;
-    }
+    if(!("Notification" in window)) throw new Error("NOTIFICATION_API_UNSUPPORTED");
+    if(!("serviceWorker" in navigator)) throw new Error("SERVICE_WORKER_UNSUPPORTED");
+    if(!("PushManager" in window)) throw new Error("PUSH_MANAGER_UNSUPPORTED");
 
     if(Notification.permission!=="granted"){
       const permission=await Notification.requestPermission();
       if(permission!=="granted"){
-        await updateNotificationSetupStatus();
-        return false;
+        throw new Error(`NOTIFICATION_PERMISSION_${permission.toUpperCase()}`);
       }
     }
 
@@ -2932,14 +2985,33 @@ async function enableBackgroundPush(){
     const master=document.getElementById("notifyMaster");
     if(master) master.checked=true;
 
-    await upsertPushSubscription();
+    const sub=await getOrCreatePushSubscription();
+    await savePushSubscriptionToSupabase(sub);
+
     updateNotificationSchedulerStatus();
     updateBackgroundPushStatus(true);
     await updateNotificationSetupStatus();
 
+    setPushDiagnostic("通知ON：この端末はPush通知に登録済みです");
     return true;
   }catch(err){
+    const msg=String(err?.message||err);
     console.warn("enableBackgroundPush failed:",err);
+
+    let friendly=`登録に失敗しました：${msg}`;
+    if(msg.includes("VAPID_PUBLIC_KEY_NOT_CONFIGURED")){
+      friendly="登録できません：VAPID公開鍵が設定されていません";
+    }else if(msg.includes("SUPABASE_SAVE_FAILED_401") || msg.includes("SUPABASE_SAVE_FAILED_403")){
+      friendly="登録できません：SupabaseのRLS/権限で書き込みが拒否されました";
+    }else if(msg.includes("SUPABASE_SAVE_FAILED")){
+      friendly=`Supabase登録に失敗しました：${msg}`;
+    }else if(msg.includes("PUSH_MANAGER_UNSUPPORTED")){
+      friendly="このブラウザ/PWAはPush通知に対応していません";
+    }else if(msg.includes("SERVICE_WORKER_UNSUPPORTED")){
+      friendly="Service Workerに対応していません";
+    }
+
+    setPushDiagnostic(friendly);
     updateBackgroundPushStatus(false);
     await updateNotificationSetupStatus();
     return false;
@@ -2953,19 +3025,26 @@ async function toggleBackgroundPush(){
     btn.textContent="切り替え中…";
   }
 
+  setPushDiagnostic("");
+
   try{
     if(!("serviceWorker" in navigator) || !("PushManager" in window)){
-      return;
+      throw new Error("PUSH_UNSUPPORTED");
     }
 
     const reg=await navigator.serviceWorker.ready;
     const currentSub=await reg.pushManager.getSubscription();
 
     if(currentSub){
+      setPushDiagnostic("通知をOFFにしています…");
       await disableBackgroundPush();
+      setPushDiagnostic("通知OFF：Push購読を解除しました");
     }else{
       await enableBackgroundPush();
     }
+  }catch(err){
+    console.warn("toggleBackgroundPush failed:",err);
+    setPushDiagnostic(`切り替えに失敗しました：${String(err?.message||err)}`);
   }finally{
     await updateNotificationSetupStatus();
   }
@@ -3326,7 +3405,7 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
 
-const FX_SIGNAL_APP_VERSION="2026.10.06-push7";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push8";
 
 let fxSignalLatestVersion = FX_SIGNAL_APP_VERSION;
 
