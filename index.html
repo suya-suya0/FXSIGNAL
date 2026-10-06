@@ -920,7 +920,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push22">
+<meta name="fx-signal-version" content="2026.10.06-push23">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -1222,7 +1222,7 @@ body.force-desktop{
   </section>
 
   <section id="settings" class="hidden">
-<div id="buildMarker" style="font-size:11px;color:#71809a;margin:0 0 10px">Build 2026.10.06-push22</div>
+<div id="buildMarker" style="font-size:11px;color:#71809a;margin:0 0 10px">Build 2026.10.06-push23</div>
 
     <div class="card">
       <h3>設定</h3>
@@ -1396,7 +1396,7 @@ body.force-desktop{
 </script>
 
 <script>
-const FX_SIGNAL_APP_VERSION="2026.10.06-push22";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push23";
 const SUPABASE_URL = "https://sbudokmgkfvrfgslfjyq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_oOmD_eZmTT6ON4BFiavPjQ_xZqe0ivR";
 let events = [];
@@ -2794,7 +2794,7 @@ document.getElementById("testSoundBtn")?.addEventListener("click",playNotificati
 const FX_SIGNAL_VAPID_PUBLIC_KEY="BIcmlxlNJyM5gtWPfEZiu2Bb0EQSzUi3G-_Ks7YCSr_Z8HughBj0DKWb7pMhhJStCcobDpRPBw2AwNPpe6RqU7Y";
 
 const PUSH_MANAGER_FUNCTION_URL =
-  `${SUPABASE_URL}/functions/v1/manage-push-subscription`;
+  `${SUPABASE_URL}/functions/v1/smooth-processor`;
 const NOTIFY_PREFS_KEY="fxsignal_notify_prefs";
 const NOTIFIED_KEY="fxsignal_notified_keys";
 
@@ -3142,7 +3142,7 @@ async function getPushServiceWorkerRegistration(){
 
   if(!reg){
     try{
-      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push22");
+      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push23");
     }catch(err){
       throw new Error(`SERVICE_WORKER_REGISTER_FAILED: ${String(err?.message||err)}`);
     }
@@ -4091,7 +4091,7 @@ document.getElementById("pwaInstallBtn")?.addEventListener("click",async()=>{
 if("serviceWorker" in navigator){
   window.addEventListener("load",async()=>{
     try{
-      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push22");
+      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push23");
       fxSignalRegistration=reg;
 
       // Clear stale UI first, then inspect actual worker state.
