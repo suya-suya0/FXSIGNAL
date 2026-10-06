@@ -919,7 +919,7 @@ body.force-desktop{
 
 /* Beginner OFF: keep glossary in place so the nav never shifts. */
 body.beginner-hidden .glossary-nav{
-  display:flex !important;
+  display:block !important;
   visibility:visible !important;
   opacity:.36 !important;
   filter:grayscale(.75);
@@ -933,11 +933,70 @@ body.beginner-hidden .glossary-nav{
   cursor:default !important;
 }
 
+
+@media(max-width:900px){
+  .mobile-nav{
+    grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+  }
+  .mobile-nav .mnav{
+    width:100%;
+    min-width:0;
+    display:block;
+    box-sizing:border-box;
+  }
+  .mobile-nav .mnav span{
+    display:block;
+  }
+}
+
+
+#todayBtn{
+  white-space:nowrap;
+  min-width:76px;
+}
+.toolbar .actions{
+  display:flex;
+  flex-wrap:nowrap;
+  align-items:center;
+  gap:6px;
+}
+@media(max-width:420px){
+  #todayBtn{
+    min-width:72px;
+    padding-left:8px;
+    padding-right:8px;
+    font-size:11px;
+  }
+}
+
+
+.markets{
+  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  gap:6px !important;
+}
+.market{
+  min-width:0;
+  padding:10px 4px !important;
+}
+.market .name{
+  white-space:nowrap;
+  font-size:12px;
+}
+.market .state{
+  white-space:nowrap;
+}
+@media(max-width:420px){
+  .markets{gap:4px !important}
+  .market{padding:9px 2px !important}
+  .market .name{font-size:11px}
+  .market .state{font-size:9px}
+}
+
 </style>
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push26">
+<meta name="fx-signal-version" content="2026.10.06-push27">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -974,6 +1033,7 @@ body.beginner-hidden .glossary-nav{
           <div id="overlapBadge" class="overlap">自動判定</div>
         </div>
         <div class="markets">
+          <div id="sydneyMarket" class="market"><div class="name">🇦🇺 豪州</div><div class="state">--</div></div>
           <div id="tokyoMarket" class="market"><div class="name">🇯🇵 東京</div><div class="state">--</div></div>
           <div id="londonMarket" class="market"><div class="name">🇪🇺 欧州</div><div class="state">--</div></div>
           <div id="nyMarket" class="market"><div class="name">🇺🇸 NY</div><div class="state">--</div></div>
@@ -1236,7 +1296,7 @@ body.beginner-hidden .glossary-nav{
   </section>
 
   <section id="settings" class="hidden">
-<div id="buildMarker" style="font-size:11px;color:#71809a;margin:0 0 10px">Build 2026.10.06-push26</div>
+<div id="buildMarker" style="font-size:11px;color:#71809a;margin:0 0 10px">Build 2026.10.06-push27</div>
 
     <div class="card">
       <h3>設定</h3>
@@ -1306,7 +1366,7 @@ body.beginner-hidden .glossary-nav{
 
 <script id="fx-ui-bootstrap">
 (function(){
-  const BUILD="2026.10.06-push20";
+  const BUILD="2026.10.06-push27";
   const BEGINNER_KEY="fxsignal_beginner";
 
   function showSection(target){
@@ -1427,7 +1487,7 @@ document.addEventListener("keydown",(event)=>{
 </script>
 
 <script>
-const FX_SIGNAL_APP_VERSION="2026.10.06-push26";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push27";
 const SUPABASE_URL = "https://sbudokmgkfvrfgslfjyq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_oOmD_eZmTT6ON4BFiavPjQ_xZqe0ivR";
 let events = [];
@@ -2669,12 +2729,34 @@ function setMarket(id,open){
   const el=document.getElementById(id); el.classList.toggle("open",open); el.querySelector(".state").textContent=open?"OPEN":"CLOSED";
 }
 function updateMarkets(){
-  const tok=zoneHour("Asia/Tokyo"), lon=zoneHour("Europe/London"), ny=zoneHour("America/New_York");
-  const t=tok>=9&&tok<18, l=lon>=8&&lon<17, n=ny>=8&&ny<17;
-  setMarket("tokyoMarket",t); setMarket("londonMarket",l); setMarket("nyMarket",n);
-  const open=[t?"🇯🇵 東京":null,l?"🇪🇺 欧州":null,n?"🇺🇸 NY":null].filter(Boolean);
-  document.getElementById("marketNow").textContent=open.length?`現在：${open.join(" × ")}`:"現在：主要市場クローズ";
-  document.getElementById("overlapBadge").textContent=open.length>=2?"🔥 市場重複中":"市場状況を自動判定";
+  const syd=zoneHour("Australia/Sydney");
+  const tok=zoneHour("Asia/Tokyo");
+  const lon=zoneHour("Europe/London");
+  const ny=zoneHour("America/New_York");
+
+  // FX session-style local trading windows. Time zones automatically follow DST.
+  const s=syd>=8&&syd<17;
+  const t=tok>=9&&tok<18;
+  const l=lon>=8&&lon<17;
+  const n=ny>=8&&ny<17;
+
+  setMarket("sydneyMarket",s);
+  setMarket("tokyoMarket",t);
+  setMarket("londonMarket",l);
+  setMarket("nyMarket",n);
+
+  const open=[
+    s?"🇦🇺 豪州":null,
+    t?"🇯🇵 東京":null,
+    l?"🇪🇺 欧州":null,
+    n?"🇺🇸 NY":null
+  ].filter(Boolean);
+
+  document.getElementById("marketNow").textContent=
+    open.length?`現在：${open.join(" × ")}`:"現在：主要市場クローズ";
+
+  document.getElementById("overlapBadge").textContent=
+    open.length>=2?"🔥 市場重複中":"市場状況を自動判定";
 }
 
 
@@ -3173,7 +3255,7 @@ async function getPushServiceWorkerRegistration(){
 
   if(!reg){
     try{
-      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push26");
+      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push27");
     }catch(err){
       throw new Error(`SERVICE_WORKER_REGISTER_FAILED: ${String(err?.message||err)}`);
     }
@@ -4246,7 +4328,7 @@ document.getElementById("pwaInstallBtn")?.addEventListener("click",async()=>{
 if("serviceWorker" in navigator){
   window.addEventListener("load",async()=>{
     try{
-      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push26");
+      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push27");
       fxSignalRegistration=reg;
 
       // Clear stale UI first, then inspect actual worker state.
