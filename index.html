@@ -920,7 +920,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push6">
+<meta name="fx-signal-version" content="2026.10.06-push7">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -2161,7 +2161,7 @@ document.addEventListener("keydown",e=>{
     e.preventDefault();
     openEventModal(eventByKey(e.target.dataset.eventKey));
   }
-  if(e.key==="Escape"){ closeEventModal(); closeDayPopup(); }
+  if(e.key==="Escape"){ closeEventModal(); closeDayPopup(); closeNotificationPermissionHelp(); }
 });
 
 function renderHome(){
@@ -2982,8 +2982,16 @@ function openNotificationPermissionHelp(){
 }
 
 function closeNotificationPermissionHelp(){
-  document.getElementById("notificationPermissionHelp")?.classList.add("hidden");
-  document.body.style.overflow="";
+  const modal=document.getElementById("notificationPermissionHelp");
+  if(modal) modal.classList.add("hidden");
+
+  // Only restore scrolling if no other modal is currently open.
+  const dayOpen=!document.getElementById("dayPopupBackdrop")?.classList.contains("hidden");
+  const eventOpen=!document.getElementById("eventModalBackdrop")?.classList.contains("hidden");
+
+  if(!dayOpen && !eventOpen){
+    document.body.style.overflow="";
+  }
 }
 
 document.getElementById("revokeNotificationHelpBtn")?.addEventListener("click",async()=>{
@@ -2998,11 +3006,30 @@ document.getElementById("revokeNotificationHelpBtn")?.addEventListener("click",a
   openNotificationPermissionHelp();
 });
 
-document.getElementById("notificationPermissionHelpClose")?.addEventListener("click",closeNotificationPermissionHelp);
+document.getElementById("notificationPermissionHelpClose")?.addEventListener("click",e=>{
+  e.preventDefault();
+  e.stopPropagation();
+  closeNotificationPermissionHelp();
+});
 
 document.getElementById("notificationPermissionHelp")?.addEventListener("click",e=>{
   if(e.target?.id==="notificationPermissionHelp"){
     closeNotificationPermissionHelp();
+  }
+});
+
+
+document.addEventListener("click",e=>{
+  if(e.target.closest?.("#notificationPermissionHelpClose")){
+    e.preventDefault();
+    e.stopPropagation();
+    closeNotificationPermissionHelp();
+    return;
+  }
+
+  if(e.target?.id==="notificationPermissionHelp"){
+    closeNotificationPermissionHelp();
+    return;
   }
 });
 
@@ -3299,7 +3326,7 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
 
-const FX_SIGNAL_APP_VERSION="2026.10.06-push6";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push7";
 
 let fxSignalLatestVersion = FX_SIGNAL_APP_VERSION;
 
