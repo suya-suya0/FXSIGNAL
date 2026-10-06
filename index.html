@@ -992,11 +992,41 @@ body.beginner-hidden .glossary-nav{
   .market .state{font-size:9px}
 }
 
+
+#singleInstanceBlocker{
+  position:fixed;
+  inset:0;
+  z-index:100000;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  background:#0b1220;
+}
+#singleInstanceBlocker.active{display:flex}
+#singleInstanceBlocker .single-instance-card{
+  width:min(440px,100%);
+  padding:22px;
+  border:1px solid #31415d;
+  border-radius:18px;
+  background:#101b2d;
+  text-align:center;
+}
+#singleInstanceBlocker h2{margin:0 0 10px;font-size:19px}
+#singleInstanceBlocker p{margin:0 0 16px;color:#a8b7cc;line-height:1.7}
+#singleInstanceBlocker .single-actions{
+  display:flex;
+  gap:8px;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+#singleInstanceBlocker button{min-height:44px}
+
 </style>
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push27">
+<meta name="fx-signal-version" content="2026.10.06-push28">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -1296,7 +1326,7 @@ body.beginner-hidden .glossary-nav{
   </section>
 
   <section id="settings" class="hidden">
-<div id="buildMarker" style="font-size:11px;color:#71809a;margin:0 0 10px">Build 2026.10.06-push27</div>
+<div id="buildMarker" style="font-size:11px;color:#71809a;margin:0 0 10px">Build 2026.10.06-push28</div>
 
     <div class="card">
       <h3>設定</h3>
@@ -1366,7 +1396,7 @@ body.beginner-hidden .glossary-nav{
 
 <script id="fx-ui-bootstrap">
 (function(){
-  const BUILD="2026.10.06-push27";
+  const BUILD="2026.10.06-push28";
   const BEGINNER_KEY="fxsignal_beginner";
 
   function showSection(target){
@@ -1467,6 +1497,112 @@ body.beginner-hidden .glossary-nav{
 
   // If loadData exists after the main script is parsed, schedule it independently.
   // This still runs if a later top-level initializer throws.
+  const SINGLE_INSTANCE_CHANNEL="fxsignal-single-instance-v1";
+  let fxSingleInstanceChannel=null;
+  let fxIsPrimaryInstance=false;
+
+  function showDuplicateInstanceBlocker(){
+    const blocker=document.getElementById("singleInstanceBlocker");
+    if(!blocker) return;
+    blocker.classList.add("active");
+    blocker.setAttribute("aria-hidden","false");
+
+    // Installed PWA windows may be closable automatically. Browser tabs may not be.
+    setTimeout(()=>{
+      try{ window.close(); }catch(e){}
+    },120);
+  }
+
+  function setupDuplicateInstanceButtons(){
+    document.getElementById("focusExistingInstanceBtn")?.addEventListener("click",()=>{
+      try{
+        fxSingleInstanceChannel?.postMessage({type:"FOCUS_PRIMARY"});
+      }catch(e){}
+      try{ window.close(); }catch(e){}
+    });
+
+    document.getElementById("closeDuplicateInstanceBtn")?.addEventListener("click",()=>{
+      try{ window.close(); }catch(e){}
+      const message=document.getElementById("singleInstanceMessage");
+      if(message){
+        message.textContent="自動で閉じられない場合は、このウィンドウを×で閉じてください。";
+      }
+    });
+  }
+
+  function setupBroadcastFallback(){
+    if(!("BroadcastChannel" in window)) return;
+
+    fxSingleInstanceChannel=new BroadcastChannel(SINGLE_INSTANCE_CHANNEL);
+    let heardPrimary=false;
+
+    fxSingleInstanceChannel.addEventListener("message",(event)=>{
+      const type=event.data?.type;
+
+      if(type==="INSTANCE_HELLO" && fxIsPrimaryInstance){
+        fxSingleInstanceChannel.postMessage({type:"PRIMARY_ALIVE"});
+      }
+
+      if(type==="PRIMARY_ALIVE" && !fxIsPrimaryInstance){
+        heardPrimary=true;
+        showDuplicateInstanceBlocker();
+      }
+
+      if(type==="FOCUS_PRIMARY" && fxIsPrimaryInstance){
+        try{ window.focus(); }catch(e){}
+      }
+    });
+
+    fxSingleInstanceChannel.postMessage({type:"INSTANCE_HELLO"});
+
+    setTimeout(()=>{
+      if(!heardPrimary && !fxIsPrimaryInstance){
+        fxIsPrimaryInstance=true;
+      }
+    },350);
+  }
+
+  function enforceSingleInstance(){
+    setupDuplicateInstanceButtons();
+
+    if("locks" in navigator && navigator.locks?.request){
+      navigator.locks.request(
+        "fxsignal-single-instance-lock",
+        {mode:"exclusive",ifAvailable:true},
+        async lock=>{
+          if(!lock){
+            showDuplicateInstanceBlocker();
+            return;
+          }
+
+          fxIsPrimaryInstance=true;
+
+          if("BroadcastChannel" in window){
+            fxSingleInstanceChannel=new BroadcastChannel(SINGLE_INSTANCE_CHANNEL);
+            fxSingleInstanceChannel.addEventListener("message",(event)=>{
+              if(event.data?.type==="INSTANCE_HELLO"){
+                fxSingleInstanceChannel.postMessage({type:"PRIMARY_ALIVE"});
+              }
+              if(event.data?.type==="FOCUS_PRIMARY"){
+                try{ window.focus(); }catch(e){}
+              }
+            });
+          }
+
+          await new Promise(()=>{});
+        }
+      ).catch(err=>{
+        console.warn("Single-instance lock failed:",err);
+        setupBroadcastFallback();
+      });
+      return;
+    }
+
+    setupBroadcastFallback();
+  }
+
+  enforceSingleInstance();
+
   window.addEventListener("load", function(){
     setTimeout(function(){
       try{
@@ -1487,7 +1623,7 @@ document.addEventListener("keydown",(event)=>{
 </script>
 
 <script>
-const FX_SIGNAL_APP_VERSION="2026.10.06-push27";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push28";
 const SUPABASE_URL = "https://sbudokmgkfvrfgslfjyq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_oOmD_eZmTT6ON4BFiavPjQ_xZqe0ivR";
 let events = [];
@@ -3255,7 +3391,7 @@ async function getPushServiceWorkerRegistration(){
 
   if(!reg){
     try{
-      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push27");
+      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push28");
     }catch(err){
       throw new Error(`SERVICE_WORKER_REGISTER_FAILED: ${String(err?.message||err)}`);
     }
@@ -3624,18 +3760,6 @@ function closeNotificationPermissionHelp(){
   }
 }
 
-document.getElementById("revokeNotificationHelpBtn")?.addEventListener("click",async()=>{
-  // First make sure FX SIGNAL itself stops sending notifications.
-  try{
-    const reg=("serviceWorker" in navigator) ? await navigator.serviceWorker.ready : null;
-    const sub=reg?.pushManager ? await reg.pushManager.getSubscription() : null;
-    if(sub){
-      await disableBackgroundPush();
-    }
-  }catch{}
-  openNotificationPermissionHelp();
-});
-
 document.getElementById("notificationPermissionHelpClose")?.addEventListener("click",e=>{
   e.preventDefault();
   e.stopPropagation();
@@ -3913,12 +4037,6 @@ function initNotificationControls(){
   applyNotifyPrefs();
 
   document.getElementById("requestNotificationPermissionBtn")?.addEventListener("click",toggleBackgroundPush);
-  document.getElementById("testPushConnectionBtn")?.addEventListener("click",testPushManagerConnection);
-  document.getElementById("testSystemSoundBtn")?.addEventListener("click",testSystemNotificationSound);
-  document.getElementById("systemSoundHelpBtn")?.addEventListener("click",openSystemSoundHelp);
-  document.getElementById("systemSoundHelpCloseBtn")?.addEventListener("click",closeSystemSoundHelp);
-  document.querySelector("[data-close-system-sound-help]")?.addEventListener("click",closeSystemSoundHelp);
-  document.getElementById("testRealNotificationBtn")?.addEventListener("click",testRealNotification);
   document.getElementById("notificationToastClose")?.addEventListener("click",e=>{
     e.preventDefault();
     e.stopPropagation();
@@ -4157,8 +4275,8 @@ function showAppUpdateBanner(){}
 function hideAppUpdateBanner(){}
 
 async function applyAppUpdate(){
-  const btn=document.getElementById("applyAppUpdateBtn");
-  const status=document.getElementById("appUpdateStatus");
+  const btn=document.getElementById("manualUpdateCheckBtn");
+  const status=document.getElementById("manualUpdateStatus");
 
   if(btn){
     btn.disabled=true;
@@ -4198,15 +4316,13 @@ async function applyAppUpdate(){
   }
 }
 
-document.getElementById("applyAppUpdateBtn")?.addEventListener("click",applyAppUpdate);
-document.getElementById("dismissAppUpdateBtn")?.addEventListener("click",hideAppUpdateBanner);
 
 if("serviceWorker" in navigator){
   navigator.serviceWorker.addEventListener("controllerchange",()=>{
     if(fxSignalRefreshing) return;
     fxSignalRefreshing=true;
     hideAppUpdateBanner();
-    const status=document.getElementById("appUpdateStatus");
+    const status=document.getElementById("manualUpdateStatus");
     if(status) status.textContent="更新完了。最新版を開きます…";
     const url=new URL(location.href);
     url.searchParams.set("_fxupdate",Date.now());
@@ -4328,7 +4444,7 @@ document.getElementById("pwaInstallBtn")?.addEventListener("click",async()=>{
 if("serviceWorker" in navigator){
   window.addEventListener("load",async()=>{
     try{
-      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push27");
+      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push28");
       fxSignalRegistration=reg;
 
       // Clear stale UI first, then inspect actual worker state.
@@ -4466,6 +4582,18 @@ updatePwaInstallUi();
     <h3 id="systemSoundHelpTitle">スマホの通知音をONにする</h3>
     <div id="systemSoundHelpBody" class="modal-body">
       <p>端末の通知音は、FX SIGNALではなくスマホOS側で管理されています。</p>
+    </div>
+  </div>
+</div>
+
+
+<div id="singleInstanceBlocker" aria-hidden="true">
+  <div class="single-instance-card" role="alertdialog" aria-labelledby="singleInstanceTitle">
+    <h2 id="singleInstanceTitle">FX SIGNALはすでに起動しています</h2>
+    <p id="singleInstanceMessage">重複起動を防ぐため、この画面では操作できません。先に開いているFX SIGNALを使ってください。</p>
+    <div class="single-actions">
+      <button id="focusExistingInstanceBtn" class="mini primary" type="button">先に開いている画面へ</button>
+      <button id="closeDuplicateInstanceBtn" class="mini" type="button">この画面を閉じる</button>
     </div>
   </div>
 </div>
