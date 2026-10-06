@@ -920,7 +920,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push5">
+<meta name="fx-signal-version" content="2026.10.06-push6">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -3299,7 +3299,7 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
 
-const FX_SIGNAL_APP_VERSION="2026.10.06-push5";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push6";
 
 let fxSignalLatestVersion = FX_SIGNAL_APP_VERSION;
 
@@ -3349,13 +3349,9 @@ function syncUpdateBanner(reg){
 }
 
 
-function showAppUpdateBanner(){
-  document.getElementById("appUpdateBanner")?.classList.remove("hidden");
-}
+function showAppUpdateBanner(){}
 
-function hideAppUpdateBanner(){
-  document.getElementById("appUpdateBanner")?.classList.add("hidden");
-}
+function hideAppUpdateBanner(){}
 
 async function applyAppUpdate(){
   const btn=document.getElementById("applyAppUpdateBtn");
@@ -3442,18 +3438,14 @@ async function manualCheckForUpdate(){
     const info=await refreshUpdateBannerByVersion();
 
     if(info.needsUpdate){
-      if(status){
-        status.textContent=`最新版 ${fxSignalLatestVersion} があります`;
-      }
+      if(status) status.textContent=`最新版 ${fxSignalLatestVersion} があります`;
       if(btn){
         btn.disabled=false;
         btn.textContent="更新する";
         btn.onclick=applyAppUpdate;
       }
     }else{
-      if(status){
-        status.textContent=`現在 ${FX_SIGNAL_APP_VERSION} ／ 最新版です`;
-      }
+      if(status) status.textContent=`現在 ${FX_SIGNAL_APP_VERSION} ／ 最新版です`;
       if(btn){
         btn.disabled=false;
         btn.textContent="更新を確認";
@@ -3514,7 +3506,7 @@ window.addEventListener("beforeinstallprompt",e=>{
   e.preventDefault();
   deferredInstallPrompt=e;
   updatePwaInstallUi();
-refreshUpdateBannerByVersion();
+
 });
 
 window.addEventListener("appinstalled",()=>{
@@ -3559,7 +3551,7 @@ if("serviceWorker" in navigator){
 
       // Also check shortly after load because some mobile browsers settle state asynchronously.
       setTimeout(()=>syncUpdateBanner(reg),1200);
-      setTimeout(()=>refreshUpdateBannerByVersion(),1800);
+      
     }catch(err){
       console.warn("Service Worker registration failed:",err);
       hideAppUpdateBanner();
@@ -3570,23 +3562,6 @@ if("serviceWorker" in navigator){
 updatePwaInstallUi();
 
 </script>
-
-
-
-
-<div id="appUpdateBanner" class="app-update-banner hidden" style="display:none" role="status" aria-live="polite">
-  <div class="app-update-row">
-    <div class="app-update-text">
-      <strong>新しいバージョンがあります</strong>
-      <span id="appUpdateStatus">最新版に更新できます</span>
-    </div>
-    <div class="app-update-actions">
-      <button id="applyAppUpdateBtn" class="mini primary" type="button">更新する</button>
-      <button id="dismissAppUpdateBtn" class="mini" type="button">あとで</button>
-    </div>
-  </div>
-</div>
-
 <div id="notificationToast" class="notification-toast hidden" role="status" aria-live="polite">
   <div class="notification-toast-head">
     <div>
