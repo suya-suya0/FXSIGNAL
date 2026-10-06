@@ -920,7 +920,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push13">
+<meta name="fx-signal-version" content="2026.10.06-push14">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -3002,46 +3002,28 @@ async function getOrCreatePushSubscription(){
 
 async function savePushSubscriptionToSupabase(sub){
   const payload=pushPrefsPayload(sub);
-
   setPushDiagnostic("Supabaseへ端末登録しています…");
 
-  let response;
-  try{
-    response=await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?on_conflict=endpoint`,{
-      method:"POST",
-      headers:{
-        apikey:SUPABASE_KEY,
-        Authorization:`Bearer ${SUPABASE_KEY}`,
-        "Content-Type":"application/json",
-        Prefer:"resolution=merge-duplicates,return=representation"
-      },
-      body:JSON.stringify(payload)
-    });
-  }catch(err){
-    throw new Error(`SUPABASE_NETWORK_FAILED: ${String(err?.message||err)}`);
-  }
-
-  let text="";
-  try{
-    text=await response.text();
-  }catch{}
+  const response=await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?on_conflict=endpoint`,{
+    method:"POST",
+    headers:{
+      apikey:SUPABASE_KEY,
+      Authorization:`Bearer ${SUPABASE_KEY}`,
+      "Content-Type":"application/json",
+      Prefer:"resolution=merge-duplicates,return=minimal"
+    },
+    body:JSON.stringify(payload)
+  });
 
   if(!response.ok){
-    throw new Error(`SUPABASE_${response.status}: ${text || response.statusText}`);
-  }
-
-  let rows=[];
-  try{
-    rows=text ? JSON.parse(text) : [];
-  }catch{}
-
-  if(!Array.isArray(rows) || rows.length===0){
-    throw new Error(`SUPABASE_NO_ROW_RETURNED: ${text || "empty response"}`);
+    let detail="";
+    try{ detail=await response.text(); }catch{}
+    throw new Error(`SUPABASE_${response.status}: ${detail || response.statusText}`);
   }
 
   setPushServerConfirmed(true);
-  setPushDiagnostic("Supabaseへの端末登録を確認しました");
-  return rows[0];
+  setPushDiagnostic("Supabaseへの端末登録が完了しました");
+  return {ok:true};
 }
 
 async function disableBackgroundPush(){
@@ -3191,7 +3173,7 @@ async function toggleBackgroundPush(){
       setPushDiagnostic("残っているPush購読をSupabaseへ登録し直しています…");
       const saved=await savePushSubscriptionToSupabase(currentSub);
 
-      if(!saved?.id){
+      if(!saved?.ok){
         throw new Error("SUPABASE_REPAIR_VERIFICATION_FAILED");
       }
 
@@ -3587,7 +3569,7 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
 
-const FX_SIGNAL_APP_VERSION="2026.10.06-push13";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push14";
 
 let fxSignalLatestVersion = FX_SIGNAL_APP_VERSION;
 
