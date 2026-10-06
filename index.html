@@ -916,11 +916,28 @@ body.force-desktop{
   }
 }
 
+
+/* Beginner OFF: keep glossary in place so the nav never shifts. */
+body.beginner-hidden .glossary-nav{
+  display:flex !important;
+  visibility:visible !important;
+  opacity:.36 !important;
+  filter:grayscale(.75);
+  pointer-events:none !important;
+  cursor:default !important;
+}
+.glossary-nav.glossary-nav-disabled{
+  opacity:.36 !important;
+  filter:grayscale(.75);
+  pointer-events:none !important;
+  cursor:default !important;
+}
+
 </style>
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push25">
+<meta name="fx-signal-version" content="2026.10.06-push26">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -1160,15 +1177,10 @@ body.force-desktop{
       <div class="notify-group">
         <div class="notify-label">初回セットアップ</div>
         <div class="notification-setup">
-          <div class="notification-setup-title">通知を使える状態にする</div>
-          <div class="sub">最初に一度だけ、通知許可と音の確認をしてください。</div>
+          <div class="notification-setup-title">バックグラウンド通知</div>
+          <div class="sub">スマホやPCで通知を受け取ります。アプリを閉じていてもOS通知として届きます。</div>
           <div class="notification-setup-actions">
             <button id="requestNotificationPermissionBtn" class="mini primary" type="button">通知をONにする</button>
-            <button id="revokeNotificationHelpBtn" class="mini" type="button">通知許可を解除する方法</button>
-            <button id="testPushConnectionBtn" class="mini" type="button">Push通信をテスト</button>
-            <button id="testSystemSoundBtn" class="mini" type="button">端末通知音をテスト</button>
-            <button id="systemSoundHelpBtn" class="mini" type="button">通知音をONにする方法</button>
-            <button id="testRealNotificationBtn" class="mini" type="button">本番通知をテスト</button>
           </div>
           <div id="notificationSetupStatus" class="notification-setup-status">状態を確認中...</div>
           <div id="pushDiagnosticStatus" class="notification-setup-status" style="color:#f2cf79"></div>
@@ -1224,7 +1236,7 @@ body.force-desktop{
   </section>
 
   <section id="settings" class="hidden">
-<div id="buildMarker" style="font-size:11px;color:#71809a;margin:0 0 10px">Build 2026.10.06-push25</div>
+<div id="buildMarker" style="font-size:11px;color:#71809a;margin:0 0 10px">Build 2026.10.06-push26</div>
 
     <div class="card">
       <h3>設定</h3>
@@ -1299,7 +1311,7 @@ body.force-desktop{
 
   function showSection(target){
     if(target==="glossary" && document.body.classList.contains("beginner-hidden")){
-      target="home";
+      return;
     }
 
     document.querySelectorAll("main section").forEach(function(section){
@@ -1322,11 +1334,24 @@ body.force-desktop{
     const badge=document.getElementById("modeBadge");
     if(badge) badge.textContent=`初心者モード ${on?"ON":"OFF"}`;
 
+    document.querySelectorAll('[data-target="glossary"]').forEach(function(button){
+      button.classList.toggle("glossary-nav-disabled", !on);
+      button.setAttribute("aria-disabled", on ? "false" : "true");
+
+      if(on){
+        button.removeAttribute("tabindex");
+      }else{
+        button.setAttribute("tabindex","-1");
+      }
+    });
+
     try{ localStorage.setItem(BEGINNER_KEY,on?"1":"0"); }catch(e){}
 
     if(!on){
       const glossary=document.getElementById("glossary");
-      if(glossary && !glossary.classList.contains("hidden")) showSection("home");
+      if(glossary && !glossary.classList.contains("hidden")){
+        showSection("home");
+      }
     }
   }
 
@@ -1338,6 +1363,7 @@ body.force-desktop{
     const button=event.target.closest && event.target.closest("[data-target]");
     if(!button) return;
     event.preventDefault();
+    if(button.classList.contains("glossary-nav-disabled")) return;
     showSection(button.dataset.target);
   });
 
@@ -1401,7 +1427,7 @@ document.addEventListener("keydown",(event)=>{
 </script>
 
 <script>
-const FX_SIGNAL_APP_VERSION="2026.10.06-push25";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push26";
 const SUPABASE_URL = "https://sbudokmgkfvrfgslfjyq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_oOmD_eZmTT6ON4BFiavPjQ_xZqe0ivR";
 let events = [];
@@ -3147,7 +3173,7 @@ async function getPushServiceWorkerRegistration(){
 
   if(!reg){
     try{
-      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push25");
+      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push26");
     }catch(err){
       throw new Error(`SERVICE_WORKER_REGISTER_FAILED: ${String(err?.message||err)}`);
     }
@@ -4220,7 +4246,7 @@ document.getElementById("pwaInstallBtn")?.addEventListener("click",async()=>{
 if("serviceWorker" in navigator){
   window.addEventListener("load",async()=>{
     try{
-      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push25");
+      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push26");
       fxSignalRegistration=reg;
 
       // Clear stale UI first, then inspect actual worker state.

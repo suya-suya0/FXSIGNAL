@@ -1,4 +1,4 @@
-const CACHE_NAME = "fx-signal-static-2026.10.06-push25";
+const CACHE_NAME = "fx-signal-static-2026.10.06-push26";
 
 const STATIC_ASSETS = [
   "./manifest.json",
