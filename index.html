@@ -920,7 +920,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push10">
+<meta name="fx-signal-version" content="2026.10.06-push11">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -2853,7 +2853,35 @@ function updateNotificationSchedulerStatus(){
 
 function urlBase64ToUint8Array(base64String){const padding="=".repeat((4-base64String.length%4)%4);const base64=(base64String+padding).replace(/-/g,"+").replace(/_/g,"/");const raw=atob(base64);return Uint8Array.from([...raw].map(ch=>ch.charCodeAt(0)))}
 function pushPrefsPayload(sub){const prefs=loadNotifyPrefs();const json=sub.toJSON();return {endpoint:sub.endpoint,p256dh:json.keys?.p256dh||"",auth:json.keys?.auth||"",enabled:!!prefs.master,notify_importance_1:!!prefs.importance1,notify_importance_2:!!prefs.importance2,notify_importance_3:!!prefs.importance3,notify_rates:!!prefs.rates,notify_central_bank:!!prefs.centralBank,notify_speech:!!prefs.speech,notify_60:prefs.minutes.includes(60),notify_30:prefs.minutes.includes(30),notify_5:prefs.minutes.includes(5),notify_0:prefs.minutes.includes(0),user_agent:navigator.userAgent}}
-function updateBackgroundPushStatus(state=null){const el=document.getElementById("backgroundPushStatus");if(!el)return;if(!("PushManager" in window)){el.textContent="バックグラウンド通知：このブラウザではPush通知に対応していません";return}if(!("Notification" in window)||Notification.permission!=="granted"){el.textContent="バックグラウンド通知：通知を許可すると設定できます";return}if(FX_SIGNAL_VAPID_PUBLIC_KEY==="BIcmlxlNJyM5gtWPfEZiu2Bb0EQSzUi3G-_Ks7YCSr_Z8HughBj0DKWb7pMhhJStCcobDpRPBw2AwNPpe6RqU7Y"){el.textContent="バックグラウンド通知：VAPID公開鍵を設定してください";return}el.textContent=state===true?"バックグラウンド通知：登録済み。アプリを閉じていても受信できます":state===false?"バックグラウンド通知：登録に失敗しました":"バックグラウンド通知：登録状態を確認中..."}
+function updateBackgroundPushStatus(state=null){
+  const el=document.getElementById("backgroundPushStatus");
+  if(!el)return;
+
+  if(!("PushManager" in window)){
+    el.textContent="バックグラウンド通知：このブラウザではPush通知に対応していません";
+    return;
+  }
+
+  if(!("Notification" in window)||Notification.permission!=="granted"){
+    el.textContent="バックグラウンド通知：通知を許可すると設定できます";
+    return;
+  }
+
+  if(
+    !FX_SIGNAL_VAPID_PUBLIC_KEY ||
+    FX_SIGNAL_VAPID_PUBLIC_KEY==="REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY"
+  ){
+    el.textContent="バックグラウンド通知：VAPID公開鍵を設定してください";
+    return;
+  }
+
+  el.textContent=
+    state===true
+      ?"バックグラウンド通知：登録済み。アプリを閉じていても受信できます"
+      :state===false
+      ?"バックグラウンド通知：登録に失敗しました"
+      :"バックグラウンド通知：登録状態を確認中...";
+}
 
 function setPushDiagnostic(message=""){
   const el=document.getElementById("pushDiagnosticStatus");
@@ -3480,7 +3508,7 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
 
-const FX_SIGNAL_APP_VERSION="2026.10.06-push10";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push11";
 
 let fxSignalLatestVersion = FX_SIGNAL_APP_VERSION;
 
