@@ -920,7 +920,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push20">
+<meta name="fx-signal-version" content="2026.10.06-push21">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -1165,6 +1165,7 @@ body.force-desktop{
           <div class="notification-setup-actions">
             <button id="requestNotificationPermissionBtn" class="mini primary" type="button">通知をONにする</button>
             <button id="revokeNotificationHelpBtn" class="mini" type="button">通知許可を解除する方法</button>
+            <button id="testPushConnectionBtn" class="mini" type="button">Push通信をテスト</button>
             <button id="testRealNotificationBtn" class="mini" type="button">本番通知をテスト</button>
           </div>
           <div id="notificationSetupStatus" class="notification-setup-status">状態を確認中...</div>
@@ -1221,7 +1222,7 @@ body.force-desktop{
   </section>
 
   <section id="settings" class="hidden">
-<div id="buildMarker" style="font-size:11px;color:#71809a;margin:0 0 10px">Build 2026.10.06-push20</div>
+<div id="buildMarker" style="font-size:11px;color:#71809a;margin:0 0 10px">Build 2026.10.06-push21</div>
 
     <div class="card">
       <h3>設定</h3>
@@ -1395,7 +1396,7 @@ body.force-desktop{
 </script>
 
 <script>
-const FX_SIGNAL_APP_VERSION="2026.10.06-push20";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push21";
 const SUPABASE_URL = "https://sbudokmgkfvrfgslfjyq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_oOmD_eZmTT6ON4BFiavPjQ_xZqe0ivR";
 let events = [];
@@ -3141,7 +3142,7 @@ async function getPushServiceWorkerRegistration(){
 
   if(!reg){
     try{
-      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push20");
+      reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push21");
     }catch(err){
       throw new Error(`SERVICE_WORKER_REGISTER_FAILED: ${String(err?.message||err)}`);
     }
@@ -3202,42 +3203,117 @@ async function getOrCreatePushSubscription(){
   return sub;
 }
 
+async function invokePushManager(payload){
+  const controller=new AbortController();
+  const timeoutId=setTimeout(()=>controller.abort(),12000);
+
+  try{
+    const response=await fetch(PUSH_MANAGER_FUNCTION_URL,{
+      method:"POST",
+      mode:"cors",
+      cache:"no-store",
+      headers:{
+        "Content-Type":"application/json",
+        "apikey":SUPABASE_KEY
+      },
+      body:JSON.stringify(payload),
+      signal:controller.signal
+    });
+
+    let rawText="";
+    let result=null;
+
+    try{
+      rawText=await response.text();
+      result=rawText ? JSON.parse(rawText) : null;
+    }catch{}
+
+    if(!response.ok){
+      throw new Error(
+        `PUSH_FUNCTION_${response.status}: ${result?.detail || result?.error || rawText || response.statusText}`
+      );
+    }
+
+    if(!result?.ok){
+      throw new Error(
+        `PUSH_FUNCTION_BAD_RESPONSE: ${result?.detail || result?.error || rawText || "unknown error"}`
+      );
+    }
+
+    return result;
+
+  }catch(err){
+    if(err?.name==="AbortError"){
+      throw new Error("PUSH_FUNCTION_TIMEOUT_12S");
+    }
+
+    const msg=String(err?.message || err);
+
+    if(msg==="Failed to fetch" || msg.includes("NetworkError") || msg.includes("Load failed")){
+      throw new Error(
+        "PUSH_FUNCTION_NETWORK: Edge Functionへ接続できません。Verify JWTをOFF・Deploy済み・CORS設定を確認してください"
+      );
+    }
+
+    throw err;
+
+  }finally{
+    clearTimeout(timeoutId);
+  }
+}
+
+async function testPushManagerConnection(){
+  const btn=document.getElementById("testPushConnectionBtn");
+
+  if(btn){
+    btn.disabled=true;
+    btn.textContent="通信確認中…";
+  }
+
+  setPushDiagnostic("Push登録用Edge Functionへ通信確認しています…");
+
+  try{
+    const result=await invokePushManager({action:"ping"});
+
+    if(result?.action!=="ping"){
+      throw new Error("PING_RESPONSE_INVALID");
+    }
+
+    setPushDiagnostic("Push通信テスト成功：Edge Functionへ接続できています");
+    return true;
+
+  }catch(err){
+    setPushDiagnostic(`Push通信テスト失敗：${String(err?.message||err)}`);
+    return false;
+
+  }finally{
+    if(btn){
+      btn.disabled=false;
+      btn.textContent="Push通信をテスト";
+    }
+  }
+}
+
 async function savePushSubscriptionToSupabase(sub){
   const prefs=loadNotifyPrefs();
   const json=sub.toJSON();
 
   setPushDiagnostic("Supabase Edge Functionへ端末登録しています…");
 
-  const response=await fetch(PUSH_MANAGER_FUNCTION_URL,{
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json"
+  const result=await invokePushManager({
+    action:"upsert",
+    subscription:{
+      endpoint:sub.endpoint,
+      p256dh:json.keys?.p256dh || "",
+      auth:json.keys?.auth || ""
     },
-    body:JSON.stringify({
-      action:"upsert",
-      subscription:{
-        endpoint:sub.endpoint,
-        p256dh:json.keys?.p256dh || "",
-        auth:json.keys?.auth || ""
-      },
-      prefs,
-      userAgent:navigator.userAgent
-    })
+    prefs,
+    userAgent:navigator.userAgent
   });
-
-  let result=null;
-  try{
-    result=await response.json();
-  }catch{}
-
-  if(!response.ok || !result?.ok){
-    throw new Error(
-      `PUSH_FUNCTION_${response.status}: ${result?.error || "unknown error"}`
-    );
-  }
 
   setPushServerConfirmed(true);
   setPushDiagnostic("Supabaseへの端末登録が完了しました");
+
   return {ok:true,id:result.row?.id || null};
 }
 
@@ -3251,29 +3327,12 @@ async function disableBackgroundPush(){
     const sub=await reg.pushManager.getSubscription();
 
     if(sub){
-      // Mark disabled server-side first.
       try{
-        const response=await fetch(PUSH_MANAGER_FUNCTION_URL,{
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({
-            action:"disable",
-            endpoint:sub.endpoint
-          })
-        });
-
-        const result=await response.json().catch(()=>null);
-
-        if(!response.ok || !result?.ok){
-          throw new Error(
-            `PUSH_DISABLE_${response.status}: ${result?.error || "unknown error"}`
-          );
-        }
+        await invokePushManager({action:"disable",endpoint:sub.endpoint});
       }catch(err){
         console.warn("Failed to disable push subscription in Supabase:",err);
       }
 
-      // Then remove the browser PushSubscription itself.
       try{
         await sub.unsubscribe();
       }catch(err){
@@ -3292,8 +3351,8 @@ async function disableBackgroundPush(){
     updateNotificationSchedulerStatus();
     updateBackgroundPushStatus(false);
     await updateNotificationSetupStatus();
-
     return true;
+
   }catch(err){
     console.warn("disableBackgroundPush failed:",err);
     return false;
@@ -3319,7 +3378,7 @@ async function enableBackgroundPush(){
     const sub=await getOrCreatePushSubscription();
     const saved=await savePushSubscriptionToSupabase(sub);
 
-    if(!saved?.id){
+    if(!saved?.ok){
       throw new Error("SUPABASE_SAVE_VERIFICATION_FAILED");
     }
 
@@ -3348,25 +3407,11 @@ async function enableBackgroundPush(){
     const master=document.getElementById("notifyMaster");
     if(master) master.checked=false;
 
-    let friendly=`登録に失敗しました：${msg}`;
-
-    if(msg.includes("PUSH_SUBSCRIBE_FAILED")){
-      friendly=`Push購読の作成に失敗しました：${msg}`;
-    }else if(msg.includes("SERVICE_WORKER")){
-      friendly=`Service Workerで失敗しました：${msg}`;
-    }else if(msg.includes("SUPABASE_401") || msg.includes("SUPABASE_403")){
-      friendly=`Supabaseに拒否されました：${msg}`;
-    }else if(msg.includes("SUPABASE_409")){
-      friendly=`Supabaseで重複/制約エラーが出ました：${msg}`;
-    }else if(msg.includes("SUPABASE_400")){
-      friendly=`Supabaseへの保存内容に問題があります：${msg}`;
-    }else if(msg.includes("SUPABASE_NETWORK_FAILED")){
-      friendly=`Supabaseへの通信に失敗しました：${msg}`;
-    }
-
-    setPushDiagnostic(friendly);
+    setPushServerConfirmed(false);
+    setPushDiagnostic(`登録に失敗しました：${msg}`);
     updateBackgroundPushStatus(false);
-    await updateNotificationSetupStatus();
+
+    try{ await updateNotificationSetupStatus(); }catch{}
     return false;
   }
 }
@@ -3626,6 +3671,7 @@ function initNotificationControls(){
   applyNotifyPrefs();
 
   document.getElementById("requestNotificationPermissionBtn")?.addEventListener("click",toggleBackgroundPush);
+  document.getElementById("testPushConnectionBtn")?.addEventListener("click",testPushManagerConnection);
   document.getElementById("testRealNotificationBtn")?.addEventListener("click",testRealNotification);
   document.getElementById("notificationToastClose")?.addEventListener("click",e=>{
     e.preventDefault();
@@ -4036,7 +4082,7 @@ document.getElementById("pwaInstallBtn")?.addEventListener("click",async()=>{
 if("serviceWorker" in navigator){
   window.addEventListener("load",async()=>{
     try{
-      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push20");
+      const reg=await navigator.serviceWorker.register("./service-worker.js?v=2026.10.06-push21");
       fxSignalRegistration=reg;
 
       // Clear stale UI first, then inspect actual worker state.
