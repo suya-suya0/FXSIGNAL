@@ -920,7 +920,7 @@ body.force-desktop{
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1220">
-<meta name="fx-signal-version" content="2026.10.06-push3">
+<meta name="fx-signal-version" content="2026.10.06-push4">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FX SIGNAL">
@@ -2843,14 +2843,14 @@ async function savePushSubscriptionToSupabase(sub){const r=await fetch(`${SUPABA
 async function disableBackgroundPush(){
   try{
     if(!("serviceWorker" in navigator) || !("PushManager" in window)){
-      updateBackgroundPushStatus(false);
-      return;
+      return false;
     }
 
     const reg=await navigator.serviceWorker.ready;
     const sub=await reg.pushManager.getSubscription();
 
     if(sub){
+      // Mark disabled server-side first.
       try{
         await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(sub.endpoint)}`,{
           method:"PATCH",
@@ -2866,6 +2866,7 @@ async function disableBackgroundPush(){
         console.warn("Failed to disable push subscription in Supabase:",err);
       }
 
+      // Then remove the browser PushSubscription itself.
       try{
         await sub.unsubscribe();
       }catch(err){
@@ -2880,30 +2881,33 @@ async function disableBackgroundPush(){
     const master=document.getElementById("notifyMaster");
     if(master) master.checked=false;
 
+    updateNotificationSchedulerStatus();
     updateBackgroundPushStatus(false);
     await updateNotificationSetupStatus();
-    updateNotificationSchedulerStatus();
+
+    return true;
   }catch(err){
     console.warn("disableBackgroundPush failed:",err);
+    return false;
   }
 }
 
-async function toggleBackgroundPush(){
+async function enableBackgroundPush(){
   try{
-    if(!("Notification" in window)){
-      updateNotificationSetupStatus();
-      return;
+    armNotifications();
+
+    if(!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)){
+      await updateNotificationSetupStatus();
+      return false;
     }
 
-    const reg=("serviceWorker" in navigator) ? await navigator.serviceWorker.ready : null;
-    const currentSub=reg?.pushManager ? await reg.pushManager.getSubscription() : null;
-
-    if(currentSub){
-      await disableBackgroundPush();
-      return;
+    if(Notification.permission!=="granted"){
+      const permission=await Notification.requestPermission();
+      if(permission!=="granted"){
+        await updateNotificationSetupStatus();
+        return false;
+      }
     }
-
-    await registerBackgroundPush();
 
     const prefs=loadNotifyPrefs();
     prefs.master=true;
@@ -2912,9 +2916,42 @@ async function toggleBackgroundPush(){
     const master=document.getElementById("notifyMaster");
     if(master) master.checked=true;
 
+    await upsertPushSubscription();
     updateNotificationSchedulerStatus();
+    updateBackgroundPushStatus(true);
+    await updateNotificationSetupStatus();
+
+    return true;
   }catch(err){
-    console.warn("toggleBackgroundPush failed:",err);
+    console.warn("enableBackgroundPush failed:",err);
+    updateBackgroundPushStatus(false);
+    await updateNotificationSetupStatus();
+    return false;
+  }
+}
+
+async function toggleBackgroundPush(){
+  const btn=document.getElementById("requestNotificationPermissionBtn");
+  if(btn){
+    btn.disabled=true;
+    btn.textContent="切り替え中…";
+  }
+
+  try{
+    if(!("serviceWorker" in navigator) || !("PushManager" in window)){
+      return;
+    }
+
+    const reg=await navigator.serviceWorker.ready;
+    const currentSub=await reg.pushManager.getSubscription();
+
+    if(currentSub){
+      await disableBackgroundPush();
+    }else{
+      await enableBackgroundPush();
+    }
+  }finally{
+    await updateNotificationSetupStatus();
   }
 }
 
@@ -2939,6 +2976,7 @@ async function updateNotificationSetupStatus(){
   if(
     "serviceWorker" in navigator &&
     "PushManager" in window &&
+    "Notification" in window &&
     Notification.permission==="granted"
   ){
     try{
@@ -2956,9 +2994,12 @@ async function updateNotificationSetupStatus(){
 
   if(!btn) return;
 
-  if(!("Notification" in window)){
+  btn.disabled=false;
+  btn.classList.remove("primary");
+
+  if(!("Notification" in window) || !("PushManager" in window)){
     btn.disabled=true;
-    btn.textContent="ブラウザ通知非対応";
+    btn.textContent="Push通知非対応";
     return;
   }
 
@@ -2969,17 +3010,15 @@ async function updateNotificationSetupStatus(){
   }
 
   if(hasPushSubscription){
-    btn.disabled=false;
     btn.textContent="通知をOFFにする";
-    btn.classList.remove("primary");
     return;
   }
 
-  btn.disabled=false;
   btn.classList.add("primary");
-  btn.textContent=Notification.permission==="granted"
-    ? "通知をONにする"
-    : "通知を許可してONにする";
+  btn.textContent=
+    Notification.permission==="granted"
+      ? "通知をONにする"
+      : "通知を許可してONにする";
 }
 
 async function requestNotificationPermission(){
@@ -3213,7 +3252,7 @@ applyViewMode(localStorage.getItem("fxsignal_view_mode") || "auto");
 setCalendarView(calendarView); updateMarkets(); setInterval(updateMarkets,60000); loadData();
 
 
-const FX_SIGNAL_APP_VERSION="2026.10.06-push3";
+const FX_SIGNAL_APP_VERSION="2026.10.06-push4";
 
 let fxSignalLatestVersion = FX_SIGNAL_APP_VERSION;
 
